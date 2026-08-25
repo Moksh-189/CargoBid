@@ -36,9 +36,6 @@
       { n: 'Review & post', icon: 'ri-send-plane-line' }
     ];
 
-    var ctx = CB.shell.mount({ role: 'shipper', nav: 'loads', title: 'Post a load', live: false, render: renderShell });
-    if (!ctx) return;
-
     function pad(n) { return String(n).padStart(2, '0'); }
     function toInput(ms) {
       var dt = new Date(ms);
@@ -50,6 +47,9 @@
     var dFrom = new Date(now); dFrom.setDate(dFrom.getDate() + 1); dFrom.setHours(9, 0, 0, 0);
     var dTo = new Date(dFrom.getTime()); dTo.setHours(13, 0, 0, 0);
     var dDeliver = new Date(now); dDeliver.setDate(dDeliver.getDate() + 3); dDeliver.setHours(18, 0, 0, 0);
+
+    var ctx = CB.shell.mount({ role: 'shipper', nav: 'loads', title: 'Post a load', live: false, render: renderShell });
+    if (!ctx) return;
 
     function field(label, inner, hint) {
       return '<div class="field"><label>' + esc(label) + '</label>' + inner +
@@ -122,11 +122,11 @@
         '<h3>When, and how should carriers bid?</h3><p class="t-small">Set the pickup window and how long the auction runs.</p>' +
         '<div class="form-grid" style="margin-top:1.25rem">' +
           '<div class="col-2">' +
-            field('Pickup from', '<input class="input" name="pickFrom" type="datetime-local" value="' + toInput(dFrom.getTime()) + '">') +
-            field('Pickup by', '<input class="input" name="pickTo" type="datetime-local" value="' + toInput(dTo.getTime()) + '">') +
+            field('Pickup from', '<input class="input" name="pickFrom" type="datetime-local" value="' + (dFrom ? toInput(dFrom.getTime()) : '') + '">') +
+            field('Pickup by', '<input class="input" name="pickTo" type="datetime-local" value="' + (dTo ? toInput(dTo.getTime()) : '') + '">') +
           '</div>' +
           '<div class="col-2">' +
-            field('Deliver by', '<input class="input" name="deliverBy" type="datetime-local" value="' + toInput(dDeliver.getTime()) + '">') +
+            field('Deliver by', '<input class="input" name="deliverBy" type="datetime-local" value="' + (dDeliver ? toInput(dDeliver.getTime()) : '') + '">') +
             field('Flexible pickup?', '<label class="row" style="gap:.5rem;cursor:pointer"><input type="checkbox" name="flexible"><span class="t-small">Allow ± a few days</span></label>' +
               '<input class="input" name="flexDays" type="number" min="0" max="5" value="1" style="margin-top:.5rem">') +
           '</div>' +

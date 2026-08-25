@@ -30,6 +30,11 @@
     var dom = CB.dom, esc = CB.util.esc, f = CB.fmt, q = CB.q, ui = CB.ui, act = CB.act;
     var tripId = CB.param('id');
     var filter = 'all';
+    var TABS = [
+      { key: 'all', label: 'All' },
+      { key: 'active', label: 'In transit' },
+      { key: 'delivered', label: 'Delivered' }
+    ];
 
     var ctx = CB.shell.mount({
       role: 'shipper', nav: 'trips',
@@ -61,11 +66,6 @@
     function nextStep(t) { return t.checkpoints.filter(function (c) { return !c.done; })[0]; }
 
     /* ==================================================================== LIST */
-    var TABS = [
-      { key: 'all', label: 'All' },
-      { key: 'active', label: 'In transit' },
-      { key: 'delivered', label: 'Delivered' }
-    ];
     function inTab(t, key) {
       if (key === 'active') return t.status !== 'delivered';
       if (key === 'delivered') return t.status === 'delivered';

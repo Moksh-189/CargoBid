@@ -244,11 +244,15 @@
   panel.addEventListener('change', function (e) {
     if (e.target.id === 'cbc-user') {
       var val = e.target.value;
-      if (!val) { CB.auth.signOut(); return; }
+      /* Signing out has to leave the protected page too - staying put would
+         just show a dashboard with no session behind it. */
+      if (!val) { CB.auth.signOut(); window.location.href = CB.rel('login.html'); return; }
       var role = e.target.selectedOptions[0].getAttribute('data-role');
       CB.auth.signIn(val);
-      var home = CB.auth.home ? CB.auth.home(role) : CB.rel(role + '/dashboard.html');
-      window.location.href = home;
+      /* auth.home() is root-relative, so it MUST go through CB.rel(): this
+         console is mounted on depth-1 pages too, where a bare
+         'transporter/dashboard.html' resolves to transporter/transporter/... */
+      window.location.href = CB.handoff.tag(CB.rel(CB.auth.home(role)), val);
     }
   });
 

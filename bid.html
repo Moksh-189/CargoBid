@@ -79,11 +79,12 @@
     dom.on(main, 'click', '#cb-submit', onSubmit);
     dom.on(main, 'click', '.js-signin-dash', function () {
       CB.auth.signIn(transporterId);
-      window.location.href = CB.auth.home ? CB.auth.home('transporter') : 'transporter/dashboard.html';
+      window.location.href = CB.handoff.tag(CB.rel(CB.auth.home('transporter')), transporterId);
     });
     dom.on(main, 'click', '.js-signin-load', function () {
       CB.auth.signIn(transporterId);
-      window.location.href = 'transporter/load.html?id=' + encodeURIComponent(loadId);
+      window.location.href = CB.handoff.tag(
+        CB.rel('transporter/load.html?id=' + encodeURIComponent(loadId)), transporterId);
     });
 
     CB.on('change', onChange);

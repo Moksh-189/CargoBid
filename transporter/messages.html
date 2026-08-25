@@ -34,13 +34,14 @@
        viewer, activeTp === me.id — the counterparty is the load's shipper. */
     var activeLoad = null, activeTp = null;
     var ROLE = 'transporter';
+    var me;
+    var ctx;
 
-    var ctx = CB.shell.mount({
+    ctx = CB.shell.mount({
       role: ROLE, nav: 'messages', title: 'Messages',
       live: false, render: renderShell
     });
     if (!ctx) return;
-    var me = ctx.user;
 
     /* Live: refresh both panes but NEVER the compose form (keeps input focus). */
     CB.on('change', function () {
@@ -68,7 +69,9 @@
     function activeThread() { return (activeLoad && activeTp) ? q.threadFor(activeLoad, activeTp) : null; }
 
     /* ==================================================================== */
-    function renderShell(ctx) {
+    function renderShell(_ctx) {
+      ctx = _ctx;
+      me = ctx.user;
       var threads = q.threadsOf(me.id);
 
       /* initial selection: ?load=&t=  → ?t=  → newest thread */
