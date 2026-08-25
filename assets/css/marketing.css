@@ -235,7 +235,10 @@
   position: absolute;
   bottom: 0;
 }
-.hero-scene img { width: 100%; height: auto; }
+/* NB: no `width` here — that would out-specify the per-image .hs-* widths
+   below (`.hero-scene img` = 0,1,1 beats `.hs-warehouse` = 0,1,0) and blow
+   every illustration up to full scene width. Each .hs-* sets its own width. */
+.hero-scene img { height: auto; display: block; }
 
 .hs-warehouse { right: -2%;   width: 40%;   bottom: 4%; }
 .hs-trailer   { left: 24%;    width: 40%;   bottom: 0; z-index: 2; }

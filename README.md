@@ -33,8 +33,9 @@ clean seeded world, open the **⚡ Demo** console (bottom-left on every page) �
 
 Everything below is pre-seeded and works end to end with zero code edits.
 
-1. **Land & sign in.** Open `index.html` → **Get Started** → on the sign-in page the shipper
-   card marked **“Start here”** is **Rakesh Sharma · Sharma Steel Traders (Jaipur)**. Click it.
+1. **Land & sign in.** Open `index.html` → **Sign in** → on the sign-in page, sign in as the
+   shipper **Rakesh Sharma · Sharma Steel Traders (Jaipur)** — username **`rakesh`**, password
+   **`cargobid`** (or click the **“Start here”** row to auto-fill the form, then **Sign in**).
 2. **Post a load.** New load → **Jaipur → Delhi**, 18 t **TMT steel bars**, **open body** trailer,
    pickup tomorrow, **open reverse auction**, close in ~6 h. Publish.
 3. **Watch the reach.** Publishing reports *“Notified N transporters within 50 km of Jaipur”*
@@ -113,6 +114,11 @@ The floating **⚡ Demo** button (bottom-left, every page) is the director's cha
 | Lakhan Bishnoi | Bishnoi Speed Carriers | Transporter | The cheap-but-flaky bidder |
 | — | **LD-1041** | Load | Hero: Jaipur → Delhi, 18 t TMT steel |
 
+**Signing in:** every demo account uses its **first name (lowercase)** as the username — `rakesh`,
+`vikram`, `mohan`, … — and the shared password **`cargobid`**. The sign-in page lists them all in
+gray (click a row to auto-fill), and the complete table is in **`DEMO_LOGINS.txt`**. You can also
+hop between accounts anytime from the **⚡ Demo** console → **Sign in as**.
+
 ---
 
 ## How it's built
@@ -132,7 +138,8 @@ The floating **⚡ Demo** button (bottom-left, every page) is the director's cha
 ```
 CargoBid/
 ├── index.html              Marketing landing page
-├── login.html              Role picker + one-click demo accounts
+├── login.html              Sign in / sign up form (demo logins shown on-page)
+├── DEMO_LOGINS.txt          Every demo username + the shared password
 ├── bid.html                No-login magic-link bid page (from the SMS invite)
 ├── shipper/                Shipper app  (dashboard, marketplace, load, post, trips, …)
 ├── transporter/            Transporter app  (dashboard, marketplace, load, bids, fleet,

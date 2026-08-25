@@ -1,0 +1,67 @@
+========================================================================
+  CargoBid — DEMO LOGINS
+========================================================================
+
+Open  login.html  (the "Sign in" page) and use any account below.
+
+  • PASSWORD for EVERY account:  cargobid
+  • USERNAME: the lowercase first name shown below
+             (you may also type the User ID, e.g. U-S01, or the email)
+  • Where you land depends on the account:
+        a SHIPPER      -> the shipper dashboard
+        a TRANSPORTER  -> the transporter dashboard
+
+Tip: on the sign-in page these same accounts are listed in gray —
+click any row to auto-fill the form, then press "Sign in".
+
+------------------------------------------------------------------------
+  SHIPPERS   (sign in -> shipper side)
+------------------------------------------------------------------------
+  username    password    name / company                         city
+  --------    --------    ----------------------------------      ----------
+  rakesh      cargobid    Rakesh Sharma · Sharma Steel Traders    Jaipur    <- Start here
+  meenakshi   cargobid    Meenakshi Iyer · Meenakshi Textiles     Surat
+  harpreet    cargobid    Harpreet Aggarwal · Aggarwal Agro Mills Indore
+  dev         cargobid    Dev Menon · CoolChain Foods             Pune
+  bhavna      cargobid    Bhavna Rathore · Rajputana Ceramics     Udaipur
+  sanjay      cargobid    Sanjay Bose · Nova Pharma Labs          Ahmedabad
+  nitin       cargobid    Nitin Kapoor · Kapoor Distribution      Delhi
+
+------------------------------------------------------------------------
+  TRANSPORTERS   (sign in -> transporter side)
+------------------------------------------------------------------------
+  username    password    name / company                         city
+  --------    --------    ----------------------------------      ----------
+  vikram      cargobid    Vikram Singh · Singh Roadways           Jaipur    <- Start here (high reliability)
+  mohan       cargobid    Mohan Lal Gurjar · Gurjar Transport     Jaipur    <- Backhaul demo (stranded in Delhi)
+  pramod      cargobid    Pramod Jat · Marudhara Carriers         Jaipur    (SMS-first operator)
+  anil        cargobid    Anil Chaudhary · Chaudhary Freight      Bhiwadi
+  satbir      cargobid    Satbir Yadav · Yadav Logistics          Gurugram
+  imran       cargobid    Imran Qureshi · Crescent Cargo Movers   Delhi
+  deepak      cargobid    Deepak Kumhar · Aravalli Goods Carriers Alwar
+  rajendra    cargobid    Rajendra Meena · Meena Roadlines        Kota
+  bharat      cargobid    Bharat Patel · Patel Transport Service  Surat     (46-truck fleet)
+  kiran       cargobid    Kiran Desai · Desai Coldchain           Surat
+  ganesh      cargobid    Ganesh Shinde · Shinde Carriers         Pune
+  nilesh      cargobid    Nilesh Bhawsar · Malwa Transport Udyog  Indore
+  feroze      cargobid    Feroze Sheikh · Sheikh Brothers Cargo   Ahmedabad
+  lakhan      cargobid    Lakhan Bishnoi · Bishnoi Speed Carriers Jodhpur   (cheap but flaky)
+  suresh      cargobid    Suresh Rawat · Rawat Movers             Jaipur
+
+------------------------------------------------------------------------
+  NOTES
+------------------------------------------------------------------------
+  • This is a front-end demo: there is no real authentication. The
+    "password" is a shared demo value so the sign-in form behaves like a
+    normal one. Any account signs in instantly.
+
+  • You can also switch accounts at any time WITHOUT logging out, from the
+    floating "⚡ Demo" button (bottom-left of every page) -> "Sign in as".
+
+  • "Create account" on the sign-in page makes a brand-new empty account
+    (shipper or transporter) so you can see the first-run/onboarding view.
+    It does not affect the seeded accounts above.
+
+  • To wipe everything back to this clean seeded state: open the "⚡ Demo"
+    console -> "Reset & reseed demo data".
+========================================================================

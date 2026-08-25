@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Sign in · CargoBid</title>
-  <meta name="description" content="Sign in to CargoBid. Pick a demo shipper or transporter account — no password needed.">
+  <meta name="description" content="Sign in to CargoBid. Use any of the demo accounts listed on the page — the password for all of them is cargobid.">
   <meta name="theme-color" content="#8DB0F4">
   <link rel="icon" href="assets/img/logo.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -13,6 +13,38 @@
   <link href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.css" rel="stylesheet">
   <link rel="stylesheet" href="assets/css/base.css">
   <link rel="stylesheet" href="assets/css/app.css">
+  <style>
+    /* This page reuses the shared .auth two-column shell; the styles below are
+       only for the credential form and the gray demo-account helper. */
+    .auth-tabs { margin: 1.25rem 0 1.5rem; }
+    .auth-form .field { margin-bottom: 0.9rem; }
+    .auth-form label { display:block; font: 550 0.8125rem/1.4 var(--font-sans); color: var(--ink-2); margin-bottom: 0.35rem; }
+    .form-error { color: var(--stop); font: 500 0.8125rem/1.4 var(--font-sans); margin: 0.5rem 0 0; min-height: 1.1rem; }
+    .form-hint  { color: var(--ink-3); font: 400 0.8125rem/1.5 var(--font-sans); margin-top: 0.35rem; }
+
+    .creds { margin-top: 1.75rem; border-top: 1px solid var(--line); padding-top: 1.25rem; }
+    .creds-head { display:flex; align-items:baseline; justify-content:space-between; gap:0.75rem; flex-wrap:wrap; }
+    .creds-head h3 { font-size: 0.9375rem; margin: 0; }
+    .creds-pass { font: 500 0.8125rem/1 'Geist Mono', ui-monospace, monospace; color: var(--ink-2); }
+    .creds-pass b { color: var(--accent-deep); }
+    .creds-note { color: var(--ink-3); font: 400 0.8125rem/1.5 var(--font-sans); margin: 0.35rem 0 0.9rem; }
+    .creds-group { margin-top: 0.9rem; }
+    .creds-group > p { font: 600 0.6875rem/1 var(--font-sans); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); margin: 0 0 0.5rem; }
+    .cred-list { display: grid; gap: 0.4rem; }
+    .cred-row {
+      display: flex; align-items: center; gap: 0.65rem; width: 100%; text-align: left;
+      padding: 0.5rem 0.7rem; border: 1px solid var(--line); border-radius: 12px;
+      background: var(--surface-sunk, rgba(20,22,28,0.02)); color: var(--ink-2);
+      cursor: pointer; font-family: var(--font-sans);
+      transition: border-color 0.15s ease, background 0.15s ease, transform 0.1s ease;
+    }
+    .cred-row:hover { border-color: var(--accent); background: var(--warn-wash, rgba(141,176,244,0.1)); }
+    .cred-row:active { transform: translateY(1px); }
+    .cred-user { font: 600 0.8125rem/1 'Geist Mono', ui-monospace, monospace; color: var(--ink-1, #14161C); flex: 0 0 auto; }
+    .cred-name { font-size: 0.8125rem; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .cred-meta { margin-left: auto; font-size: 0.75rem; color: var(--ink-3); flex: 0 0 auto; }
+    .cred-tag { font-size: 0.625rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ok); }
+  </style>
 </head>
 <body>
   <a class="skip-link" href="#auth-main">Skip to content</a>
@@ -40,16 +72,70 @@
     <main class="auth-main" id="auth-main">
       <div class="auth-inner">
         <div id="need-notice"></div>
-        <p class="t-eyebrow">Sign in</p>
-        <h2 class="t-h2">Choose a demo account</h2>
-        <p class="t-body" style="margin-top:.5rem">No password, no sign-up. Pick a role, then a persona — you can switch anytime from the demo console.</p>
 
-        <div class="segment role-seg" id="role-seg" role="tablist" aria-label="Choose a role">
-          <button type="button" data-value="shipper" aria-selected="true"><i class="ri-inbox-archive-line"></i>&nbsp;I ship freight</button>
-          <button type="button" data-value="transporter" aria-selected="false"><i class="ri-truck-line"></i>&nbsp;I move freight</button>
+        <p class="t-eyebrow">Welcome to CargoBid</p>
+        <h2 class="t-h2" id="auth-title">Sign in to your account</h2>
+        <p class="t-body" style="margin-top:.5rem" id="auth-sub">Use any demo account below. The password for every one of them is <b>cargobid</b>.</p>
+
+        <div class="segment auth-tabs" id="auth-tabs" aria-label="Sign in or create an account">
+          <button type="button" data-value="signin" aria-selected="true"><i class="ri-login-box-line"></i>&nbsp;Sign in</button>
+          <button type="button" data-value="signup" aria-selected="false"><i class="ri-user-add-line"></i>&nbsp;Create account</button>
         </div>
 
-        <div class="account-list" id="accounts" aria-live="polite"></div>
+        <!-- ============================ SIGN IN ============================ -->
+        <form class="auth-form" id="form-signin" autocomplete="off" novalidate>
+          <div class="field">
+            <label for="li-user">User ID or username</label>
+            <input id="li-user" class="input" type="text" placeholder="e.g. rakesh" autocapitalize="none" autocorrect="off" spellcheck="false">
+          </div>
+          <div class="field">
+            <label for="li-pass">Password</label>
+            <input id="li-pass" class="input" type="password" placeholder="cargobid">
+            <p class="form-hint">Demo password — the same <b>cargobid</b> works for every account.</p>
+          </div>
+          <p class="form-error" id="li-error" role="alert"></p>
+          <button type="submit" class="btn btn-block" id="li-submit"><i class="ri-login-box-line"></i>&nbsp;Sign in</button>
+        </form>
+
+        <!-- ========================== CREATE ACCOUNT ======================= -->
+        <form class="auth-form" id="form-signup" autocomplete="off" novalidate hidden>
+          <div class="field">
+            <label>I want to…</label>
+            <div class="segment role-seg" id="su-role" aria-label="Choose a role">
+              <button type="button" data-value="shipper" aria-selected="true"><i class="ri-inbox-archive-line"></i>&nbsp;Ship freight</button>
+              <button type="button" data-value="transporter" aria-selected="false"><i class="ri-truck-line"></i>&nbsp;Move freight</button>
+            </div>
+          </div>
+          <div class="field">
+            <label for="su-name">Full name</label>
+            <input id="su-name" class="input" type="text" placeholder="e.g. Anita Verma">
+          </div>
+          <div class="field">
+            <label for="su-company">Company <span class="t-small" style="color:var(--ink-3)">· optional</span></label>
+            <input id="su-company" class="input" type="text" placeholder="e.g. Verma Freight Co.">
+          </div>
+          <div class="field">
+            <label for="su-city">City <span class="t-small" style="color:var(--ink-3)">· optional</span></label>
+            <input id="su-city" class="input" type="text" placeholder="e.g. Jaipur">
+          </div>
+          <div class="field">
+            <label for="su-pass">Password <span class="t-small" style="color:var(--ink-3)">· optional for the demo</span></label>
+            <input id="su-pass" class="input" type="password" placeholder="Pick anything — it isn't checked in the demo">
+          </div>
+          <p class="form-hint">This spins up a fresh, empty account so you can see the onboarding view. Your seeded demo world stays untouched.</p>
+          <p class="form-error" id="su-error" role="alert"></p>
+          <button type="submit" class="btn btn-block" id="su-submit"><i class="ri-user-add-line"></i>&nbsp;Create account &amp; continue</button>
+        </form>
+
+        <!-- ===================== GRAY DEMO CREDENTIALS ===================== -->
+        <div class="creds" id="creds">
+          <div class="creds-head">
+            <h3>Demo accounts</h3>
+            <span class="creds-pass">password: <b>cargobid</b></span>
+          </div>
+          <p class="creds-note">Click any row to fill the form, then press <b>Sign in</b>. A shipper lands on the shipper dashboard; a transporter on the transporter dashboard. The full list is also in <b>DEMO_LOGINS.txt</b>.</p>
+          <div id="creds-body"></div>
+        </div>
 
         <p class="t-small" style="margin-top:1.5rem">
           <a href="index.html" style="color:var(--accent-deep);font-weight:550">← Back to the marketing site</a>
@@ -68,58 +154,181 @@
   (function () {
     'use strict';
     CB.boot();
-    var dom = CB.dom, esc = CB.util.esc;
 
-    document.getElementById('brand').innerHTML = CB.ui.logo('index.html');
+    var dom = CB.dom, esc = CB.util.esc, ui = CB.ui, q = CB.q;
+    var DEMO_PASSWORD = 'cargobid';
 
-    var need = CB.param('need');
+    document.getElementById('brand').innerHTML = ui.logo('index.html');
+
+    /* Where did we come from?
+         ?need=<role>  a protected page bounced us here (show the lock notice)
+         ?role=<role>  a marketing CTA (just preselect the signup role)
+         ?next=<path>  the page to return to after signing in            */
+    function validRole(v) { return (v === 'shipper' || v === 'transporter') ? v : null; }
+    var need = validRole(CB.param('need'));
     var next = CB.param('next');
-    var role = (need === 'transporter' || need === 'shipper') ? need : 'shipper';
+    var presetRole = need || validRole(CB.param('role'));  // for the signup default
 
     if (need) {
       document.getElementById('need-notice').innerHTML =
         '<div class="notice notice-info" style="margin-bottom:1.5rem"><i class="ri-lock-2-line"></i>' +
-        '<div>That page is for <strong>' + esc(need) + 's</strong>. Pick a ' + esc(need) + ' account below to continue.</div></div>';
+        '<div>That page is the <strong>' + esc(need) + '</strong> side. Sign in with a ' +
+        esc(need) + ' account below to continue.</div></div>';
     }
 
-    var accountsEl = document.getElementById('accounts');
+    /* ---- demo directory, built live from the seed so it never drifts ------ */
+    function handleFor(name) { return String(name || '').trim().split(/\s+/)[0].toLowerCase(); }
 
-    function card(a) {
-      var ex = a.ex || {};
-      var sub = [a.company, a.city].filter(Boolean).join(' · ');
-      return '<button type="button" class="account' + (ex.featured ? ' is-featured' : '') + '" data-id="' + a.id + '">' +
-        CB.ui.avatar(a.name, a.id, 'lg') +
-        '<span class="account-meta">' +
-          '<span class="account-name">' + esc(a.name) +
-            (ex.verified ? ' ' + CB.ui.verifiedBadge(true, true) : '') + '</span>' +
-          '<span class="account-sub">' + esc(sub) + '</span>' +
-          (ex.blurb ? '<span class="account-sub" style="color:var(--ink-3)">' + esc(ex.blurb) + '</span>' : '') +
-        '</span>' +
-        (ex.featured ? '<span class="account-tag">Start here</span>' :
-          (ex.stranded ? '<span class="account-tag" style="background:var(--warn-wash);color:var(--warn)">Backhaul demo</span>' : '')) +
-        '<i class="ri-arrow-right-line" aria-hidden="true"></i>' +
+    function buildDirectory() {
+      var out = [];
+      ['shipper', 'transporter'].forEach(function (role) {
+        var accs = [];
+        try { accs = CB.seed.accounts(role) || []; } catch (e) { accs = []; }
+        accs.forEach(function (a) {
+          var u = q.user(a.id) || {};
+          out.push({
+            id: a.id, role: role, name: a.name, company: a.company, city: a.city,
+            handle: handleFor(a.name), email: (u.email || '').toLowerCase(),
+            featured: !!(a.ex && a.ex.featured),
+            stranded: a.ex && a.ex.stranded ? a.ex.stranded : null
+          });
+        });
+      });
+      return out;
+    }
+    var DIR = buildDirectory();
+
+    function findAccount(username) {
+      var v = String(username || '').trim().toLowerCase();
+      if (!v) return null;
+      for (var i = 0; i < DIR.length; i++) {
+        var d = DIR[i];
+        if (v === d.handle || v === d.id.toLowerCase() || (d.email && v === d.email)) return d;
+      }
+      return null;
+    }
+
+    function showError(el, msg) { if (el) el.textContent = msg || ''; }
+    function val(id) { var e = document.getElementById(id); return e ? e.value.trim() : ''; }
+
+    /* ---- tab switching (Sign in / Create account) ------------------------- */
+    var tabs = document.getElementById('auth-tabs');
+    var formSignin = document.getElementById('form-signin');
+    var formSignup = document.getElementById('form-signup');
+    var titleEl = document.getElementById('auth-title');
+    var subEl = document.getElementById('auth-sub');
+
+    function showTab(mode) {
+      var signup = mode === 'signup';
+      formSignup.hidden = !signup;
+      formSignin.hidden = signup;
+      titleEl.textContent = signup ? 'Create a demo account' : 'Sign in to your account';
+      subEl.innerHTML = signup
+        ? 'Spin up a fresh shipper or transporter to explore the empty-state onboarding.'
+        : 'Use any demo account below. The password for every one of them is <b>cargobid</b>.';
+    }
+    ui.segment(tabs, showTab);
+    ui.segmentSelect(tabs, CB.param('mode') === 'signup' ? 'signup' : 'signin');
+
+    /* role picker inside the signup form */
+    var roleSeg = document.getElementById('su-role');
+    ui.segment(roleSeg, function () {});
+    ui.segmentSelect(roleSeg, presetRole || 'shipper');
+
+    /* ---- SIGN IN ---------------------------------------------------------- */
+    formSignin.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var err = document.getElementById('li-error');
+      var acc = findAccount(val('li-user'));
+      if (!acc) {
+        showError(err, 'We don’t recognise that username. Pick one from the list below.');
+        return;
+      }
+      var pass = document.getElementById('li-pass').value;
+      if (String(pass).trim().toLowerCase() !== DEMO_PASSWORD) {
+        showError(err, 'Wrong password. For every demo account it’s “' + DEMO_PASSWORD + '”.');
+        return;
+      }
+      showError(err, '');
+      CB.auth.signIn(acc.id);
+      /* Return to the bounced-from page only if the role lines up. */
+      var dest = (next && (!need || need === acc.role)) ? next : CB.auth.home(acc.role);
+      window.location.href = dest;
+    });
+
+    /* ---- CREATE ACCOUNT --------------------------------------------------- */
+    formSignup.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var err = document.getElementById('su-error');
+      var name = val('su-name');
+      if (!name) { showError(err, 'Please enter your name.'); return; }
+      showError(err, '');
+
+      var role = ui.segmentValue(roleSeg) || 'shipper';
+      var company = val('su-company') || name;
+      var city = val('su-city') || '—';
+      var now = (CB.clock && typeof CB.clock.now === 'function') ? CB.clock.now() : Date.now();
+      var id = CB.nextId('user', 'U-N');
+
+      CB.db.users.push({
+        id: id, role: role, name: name, company: company,
+        phone: '', email: null, city: city, avatarSeed: id
+      });
+
+      if (role === 'shipper') {
+        CB.db.shippers.push({
+          userId: id, gstin: '', loadsPosted: 0, rating: null,
+          sector: 'General freight', blurb: '', featured: false, memberSince: now
+        });
+      } else {
+        var prof = {
+          userId: id, homeBase: city, currentCity: city, availableFrom: now,
+          radiusKm: 60, fleetSize: 0, truckTypes: [],
+          docs: { gst: 'none', pan: 'none', rc: 'none' },
+          docRefs: { gst: '', pan: '', rc: '' },
+          verified: false, hazmatLicence: false, prefersSms: false,
+          ratings: { punctuality: 0, cargoSafety: 0, communication: 0, count: 0 },
+          deliveries: 0, onTimeDeliveries: 0, lateDeliveries: 0, onTimeRate: 0,
+          cancellations: 0, noShows: 0, bidsPlaced: 0, bidsWon: 0,
+          blurb: '', featured: false, memberSince: now, reliability: 0
+        };
+        prof.reliability = CB.score.reliability(prof);
+        CB.db.transporters.push(prof);
+      }
+
+      CB.save({ now: true });
+      CB.auth.signIn(id);
+      window.location.href = CB.auth.home(role);
+    });
+
+    /* ---- gray demo-credential helper -------------------------------------- */
+    function credRow(d) {
+      var tag = d.featured ? '<span class="cred-tag">Start here</span>'
+        : (d.stranded ? '<span class="cred-tag" style="color:var(--warn)">Backhaul</span>' : '');
+      return '<button type="button" class="cred-row" data-user="' + esc(d.handle) + '">' +
+        '<span class="cred-user">' + esc(d.handle) + '</span>' +
+        '<span class="cred-name">' + esc(d.name) + ' · ' + esc(d.company) + '</span>' +
+        '<span class="cred-meta">' + (tag || esc(d.city)) + '</span>' +
         '</button>';
     }
-
-    function render(r) {
-      var accs = [];
-      try { accs = CB.seed.accounts(r) || []; } catch (e) { accs = []; }
-      accountsEl.innerHTML = accs.length
-        ? accs.map(card).join('')
-        : '<p class="t-small">No demo accounts found. Reset the demo from the console.</p>';
+    function credGroup(title, role) {
+      var rows = DIR.filter(function (d) { return d.role === role; }).map(credRow).join('');
+      return '<div class="creds-group"><p>' + esc(title) + '</p><div class="cred-list">' + rows + '</div></div>';
     }
-    render(role);
+    document.getElementById('creds-body').innerHTML =
+      credGroup('Shippers → shipper dashboard', 'shipper') +
+      credGroup('Transporters → transporter dashboard', 'transporter');
 
-    var seg = document.getElementById('role-seg');
-    CB.ui.segmentSelect(seg, role);
-    CB.ui.segment(seg, function (v) { role = v; render(v); });
-
-    dom.on(accountsEl, 'click', '.account', function () {
-      var id = this.getAttribute('data-id');
-      var res = CB.auth.signIn(id);
-      if (res && res.error) { CB.toast(res.error, 'warn'); return; }
-      var dest = next || (CB.auth.home ? CB.auth.home(role) : role + '/dashboard.html');
-      window.location.href = dest;
+    /* Clicking a row fills the sign-in form (and switches to it if needed). */
+    dom.on(document.getElementById('creds-body'), 'click', '.cred-row', function () {
+      ui.segmentSelect(tabs, 'signin');
+      var user = this.getAttribute('data-user');
+      document.getElementById('li-user').value = user;
+      document.getElementById('li-pass').value = DEMO_PASSWORD;
+      showError(document.getElementById('li-error'), '');
+      var btn = document.getElementById('li-submit');
+      if (btn) btn.focus();
+      CB.toast('Filled “' + user + '”. Press Sign in to continue.', 'ok');
     });
   }());
   </script>

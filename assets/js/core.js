@@ -841,11 +841,13 @@
     },
     signIn: function (userId) {
       CB.db.session.userId = userId;
+      CB.handoff.remember(userId);
       CB.save({ now: true });
       CB.emit('auth', userId);
     },
     signOut: function () {
       CB.db.session.userId = null;
+      CB.handoff.forget();
       CB.save({ now: true });
       CB.emit('auth', null);
     },
@@ -863,6 +865,100 @@
     home: function (role) {
       return role === 'transporter' ? 'transporter/dashboard.html' : 'shipper/dashboard.html';
     }
+  };
+
+  /* ------------------------------------------------------------------------
+     9b. SESSION HAND-OFF
+     A navigation has to carry the signed-in user with it. Normally the
+     session just rides along inside the saved db - but that breaks the
+     moment the store cannot persist (private windows, blocked site data,
+     the in-memory fallback), and the symptom is nasty: you sign in, the
+     dashboard boots with an empty session, auth.require bounces you back
+     to the login page, and it looks like the button did nothing.
+
+     So signing in writes two redundant channels as well:
+       - sessionStorage, which survives navigation within the tab
+       - an ?as=<userId> parameter on the destination URL
+     boot() reconciles whichever one survived back into db.session.
+     ------------------------------------------------------------------------ */
+
+  var SS_USER = 'cargobid.session';
+
+  function ssGet(k) {
+    try { return window.sessionStorage ? window.sessionStorage.getItem(k) : null; }
+    catch (e) { return null; }
+  }
+  function ssSet(k, v) {
+    try { if (window.sessionStorage) window.sessionStorage.setItem(k, v); } catch (e) {}
+  }
+
+  CB.handoff = {
+    /* Stamp the session onto a URL we are about to navigate to. */
+    tag: function (url, userId) {
+      if (!url || !userId) return url;
+      var hash = '', i = url.indexOf('#');
+      if (i > -1) { hash = url.slice(i); url = url.slice(0, i); }
+      return url + (url.indexOf('?') > -1 ? '&' : '?') +
+        'as=' + encodeURIComponent(userId) + hash;
+    },
+
+    remember: function (userId) { ssSet(SS_USER, userId || ''); },
+    forget: function () { ssSet(SS_USER, ''); },
+    pending: function () { return ssGet(SS_USER) || null; },
+
+    /* Rebuild an account that was created in a store which then failed to
+       persist, from the details carried on the URL. */
+    rehydrate: function (userId) {
+      var role = CB.param('nurole');
+      if (role !== 'shipper' && role !== 'transporter') return;
+      var name = CB.param('nuname') || 'New user';
+      var city = CB.param('nucity') || '—';
+      var now = CB.clock.now();
+
+      CB.db.users.push({
+        id: userId, role: role, name: name,
+        company: CB.param('nucompany') || name,
+        phone: '', email: null, city: city, avatarSeed: userId
+      });
+      if (role === 'shipper') {
+        CB.db.shippers.push({
+          userId: userId, gstin: '', loadsPosted: 0, rating: null,
+          sector: 'General freight', blurb: '', featured: false, memberSince: now
+        });
+      } else {
+        CB.db.transporters.push(CB.blankCarrier(userId, city, now));
+      }
+    },
+
+    /* Called by boot(): whichever channel survived wins. */
+    adopt: function () {
+      var want = CB.param('as') || ssGet(SS_USER) || null;
+      if (!want) return;
+      if (!q.user(want)) CB.handoff.rehydrate(want);
+      if (!q.user(want)) return;          // unknown id - leave the session alone
+      ssSet(SS_USER, want);
+      if (CB.db.session.userId === want) return;
+      CB.db.session.userId = want;
+      CB.save({ now: true, silent: true });
+    }
+  };
+
+  /* A carrier profile with no history yet. Shared by sign-up and by the
+     hand-off rebuild above so the two can never drift apart. */
+  CB.blankCarrier = function (userId, city, now) {
+    var prof = {
+      userId: userId, homeBase: city, currentCity: city, availableFrom: now,
+      radiusKm: 60, fleetSize: 0, truckTypes: [],
+      docs: { gst: 'none', pan: 'none', rc: 'none' },
+      docRefs: { gst: '', pan: '', rc: '' },
+      verified: false, hazmatLicence: false, prefersSms: false,
+      ratings: { punctuality: 0, cargoSafety: 0, communication: 0, count: 0 },
+      deliveries: 0, onTimeDeliveries: 0, lateDeliveries: 0, onTimeRate: 0,
+      cancellations: 0, noShows: 0, bidsPlaced: 0, bidsWon: 0,
+      blurb: '', featured: false, memberSince: now, reliability: 0
+    };
+    prof.reliability = CB.score.reliability(prof);
+    return prof;
   };
 
   /* Path helper: pages live at the root and one level deep, so links need a
