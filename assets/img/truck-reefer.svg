@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 400" role="img" aria-labelledby="tReefer"><title id="tReefer">Refrigerated reefer truck</title>
+<g stroke="#14161C" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">
+  <ellipse cx="300" cy="336" rx="220" ry="40" fill="#8DB0F4" opacity="0.18" stroke="none"/>
+
+  <!-- far-side wheel peeking behind the chassis -->
+  <ellipse cx="250" cy="256" rx="24" ry="15" fill="#2A2F3D"/>
+  <ellipse cx="250" cy="256" rx="13" ry="8" fill="#3D4354"/>
+
+  <!-- insulated box body : roof (lightest), right-front wall (mid), left-rear wall (dark) -->
+  <path d="M132 110 L296 16 L392 72 L228 166 Z" fill="#EEF3FE"/>
+  <path d="M228 270 L392 176 L392 72 L228 166 Z" fill="#B9CFF9"/>
+  <path d="M228 270 L132 214 L132 110 L228 166 Z" fill="#8DB0F4"/>
+
+  <!-- box panel seams : left-rear wall (insulated ribs) -->
+  <path d="M132 180 L228 236" opacity="0.45"/>
+  <path d="M132 146 L228 202" opacity="0.45"/>
+  <path d="M180 242 L180 138" opacity="0.45"/>
+
+  <!-- box panel seams : right-front wall (insulated ribs) -->
+  <path d="M228 242 L392 148" opacity="0.45"/>
+  <path d="M228 214 L392 120" opacity="0.45"/>
+
+  <!-- reefer cooling unit : raised ribbed panel on the front of the box, cab end -->
+  <path d="M318 150 L382 113 L382 82 L318 119 Z" fill="#DCE7FD"/>
+  <path d="M382 82 L382 113 L390 108 L390 77 Z" fill="#8DB0F4"/>
+  <path d="M318 140 L382 103" opacity="0.45"/>
+  <path d="M318 130 L382 93" opacity="0.45"/>
+  <!-- fan disc on the unit -->
+  <ellipse cx="342" cy="123" rx="12" ry="9" fill="#EEF3FE"/>
+  <ellipse cx="342" cy="123" rx="5" ry="4" fill="#6D97E8"/>
+
+  <!-- cab : top / right face / left face -->
+  <path d="M392 176 L456 140 L512 172 L448 210 Z" fill="#FFFFFF"/>
+  <path d="M448 210 L512 172 L512 236 L448 274 Z" fill="#DCE7FD"/>
+  <path d="M392 176 L448 210 L448 274 L392 240 Z" fill="#EEF3FE"/>
+
+  <!-- windscreen (near-right cab face) -->
+  <path d="M456 180 L502 154 L502 186 L456 212 Z" fill="#B9CFF9"/>
+  <path d="M462 182 L496 162 L496 170 L462 190 Z" fill="#FFFFFF" opacity="0.45" stroke="none"/>
+
+  <!-- side window (left-facing cab face) -->
+  <path d="M402 184 L438 206 L438 232 L402 210 Z" fill="#B9CFF9"/>
+  <path d="M408 190 L432 204 L432 212 L408 198 Z" fill="#FFFFFF" opacity="0.45" stroke="none"/>
+
+  <!-- grille / lower front -->
+  <path d="M456 218 L502 192 L502 216 L456 242 Z" fill="#2A2F3D"/>
+  <path d="M462 224 L496 204" opacity="0.45"/>
+  <path d="M456 246 L502 220 L502 234 L456 260 Z" fill="#3D4354"/>
+
+  <!-- side mirror -->
+  <path d="M452 176 L470 166"/>
+  <path d="M466 158 L480 150 L480 168 L466 176 Z" fill="#3D4354"/>
+
+  <!-- wheel arches (near side) -->
+  <path d="M272 300 L290 290 L310 290 L328 300" fill="none"/>
+  <path d="M402 282 L420 272 L440 272 L458 282" fill="none"/>
+
+  <!-- near wheels -->
+  <ellipse cx="300" cy="302" rx="30" ry="19" fill="#2A2F3D"/>
+  <ellipse cx="300" cy="302" rx="16" ry="10" fill="#3D4354"/>
+  <ellipse cx="300" cy="302" rx="6" ry="4" fill="#DCE7FD"/>
+
+  <ellipse cx="430" cy="280" rx="30" ry="19" fill="#2A2F3D"/>
+  <ellipse cx="430" cy="280" rx="16" ry="10" fill="#3D4354"/>
+  <ellipse cx="430" cy="280" rx="6" ry="4" fill="#DCE7FD"/>
+
+  <!-- headlamp -->
+  <ellipse cx="494" cy="200" rx="7" ry="5" fill="#F7D46B"/>
+</g>
+</svg>

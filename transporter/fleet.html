@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fleet · CargoBid</title>
+  <meta name="theme-color" content="#F4F6FD">
+  <link rel="icon" href="../assets/img/logo.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300..700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.css" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/base.css">
+  <link rel="stylesheet" href="../assets/css/app.css">
+</head>
+<body>
+  <a class="skip-link" href="#app-main">Skip to content</a>
+  <div class="grain" aria-hidden="true"></div>
+
+  <script src="../assets/js/core.js"></script>
+  <script src="../assets/js/match.js"></script>
+  <script src="../assets/js/seed.js"></script>
+  <script src="../assets/js/sim.js"></script>
+  <script src="../assets/js/ui.js"></script>
+  <script src="../assets/js/console.js"></script>
+  <script src="../assets/js/shell.js"></script>
+  <script>
+  (function () {
+    'use strict';
+    var dom = CB.dom, esc = CB.util.esc, f = CB.fmt, q = CB.q, ui = CB.ui, act = CB.act;
+
+    var ctx = CB.shell.mount({ role: 'transporter', nav: 'fleet', title: 'Fleet', live: true, render: render });
+    if (!ctx) return;
+    var me = ctx.user;
+
+    /* ---- delegated actions ---- */
+    dom.on(ctx.main, 'click', '#add-truck', function () { openAddTruck(); });
+    dom.on(ctx.main, 'click', '[data-set-status]', function () {
+      var id = this.getAttribute('data-truck'), s = this.getAttribute('data-set-status');
+      var r = act.setTruckStatus(id, s);
+      if (r && r.error) { CB.toast(r.error, 'warn'); return; }
+      CB.toast(s === 'idle' ? 'Marked available' : 'Taken off duty', s === 'idle' ? 'ok' : 'info');
+    });
+    dom.on(ctx.main, 'click', '[data-upload]', function () {
+      var kind = this.getAttribute('data-upload');
+      var r = act.uploadDoc(me.id, kind, kind + '-scan.pdf');
+      if (r && r.error) { CB.toast(r.error, 'warn'); return; }
+      CB.toast(kind.toUpperCase() + ' submitted for review', 'ok');
+    });
+    dom.on(ctx.main, 'click', '[data-doc-approve]', function () {
+      act.reviewDoc(me.id, this.getAttribute('data-doc-approve'), true);
+      CB.toast('Document verified', 'ok');
+    });
+    dom.on(ctx.main, 'click', '[data-doc-reject]', function () {
+      act.reviewDoc(me.id, this.getAttribute('data-doc-reject'), false);
+      CB.toast('Document rejected', 'warn');
+    });
+
+    var STATUS = {
+      idle:        { cls: 'is-idle', icon: 'ri-checkbox-circle-line', label: 'Available' },
+      'on-trip':   { cls: 'is-transit', icon: 'ri-truck-line', label: 'On a trip' },
+      maintenance: { cls: 'is-off', icon: 'ri-tools-line', label: 'Off duty' }
+    };
+
+    function truckCard(tk) {
+      var tt = CB.truckType(tk.type);
+      var s = STATUS[tk.status] || STATUS.idle;
+      var toggle = tk.status === 'on-trip'
+        ? '<a class="btn btn-sm btn-quiet" href="trips.html"><i class="ri-map-pin-line"></i>Track</a>'
+        : (tk.status === 'idle'
+            ? '<button class="btn btn-sm btn-outline" data-set-status="maintenance" data-truck="' + tk.id + '"><i class="ri-tools-line"></i>Off duty</button>'
+            : '<button class="btn btn-sm" data-set-status="idle" data-truck="' + tk.id + '"><i class="ri-checkbox-circle-line"></i>Available</button>');
+      return '<div class="card"><div class="truck-card">' +
+        '<div class="truck-card-top">' +
+          '<div class="truck-thumb"><i class="' + tt.icon + '" style="font-size:1.6rem;color:var(--accent-deep)"></i></div>' +
+          '<div style="min-width:0;flex:1">' +
+            '<div class="t-num" style="font-weight:650;font-size:1.05rem">' + esc(tk.regNo) + '</div>' +
+            '<p class="t-small">' + esc(tt.label) + ' · ' + f.tons(tk.capacityTons) + ' · ' + (tk.bodyFt || '—') + ' ft body</p>' +
+          '</div>' +
+        '</div>' +
+        '<div class="row-between">' +
+          '<span class="truck-status ' + s.cls + '"><i class="' + s.icon + '"></i>' + s.label + '</span>' +
+          '<span class="t-small"><i class="ri-map-pin-2-line"></i> ' + esc(tk.currentCity || '—') + '</span>' +
+        '</div>' +
+        '<div class="row" style="gap:.5rem">' + toggle + '</div>' +
+      '</div></div>';
+    }
+
+    function docRow(kind, label, icon, note) {
+      var t = q.transporter(me.id) || { docs: {} };
+      var state = (t.docs && t.docs[kind]) || 'none';
+      var action;
+      if (state === 'verified') action = '';
+      else if (state === 'pending')
+        action = '<div class="row" style="gap:.35rem">' +
+          '<button class="btn btn-sm btn-quiet" data-doc-approve="' + kind + '" title="Demo: act as CargoBid reviewer">Approve</button>' +
+          '<button class="btn btn-sm btn-quiet" data-doc-reject="' + kind + '">Reject</button></div>';
+      else
+        action = '<button class="btn btn-sm btn-outline" data-upload="' + kind + '"><i class="ri-upload-2-line"></i>' + (state === 'rejected' ? 'Re-upload' : 'Upload') + '</button>';
+
+      return '<div class="doc-row">' +
+        '<span class="doc-ico"><i class="' + icon + '"></i></span>' +
+        '<div class="doc-info"><strong>' + esc(label) + '</strong><small>' + esc(note) + '</small></div>' +
+        '<div class="row" style="gap:.6rem;align-items:center">' + ui.docChip(state) + action + '</div>' +
+      '</div>';
+    }
+
+    function openAddTruck() {
+      var t = q.transporter(me.id) || {};
+      var m = ui.modal({
+        eyebrow: 'Fleet', title: 'Add a truck',
+        subtitle: 'List a vehicle so it can be matched to loads and committed on bids.',
+        size: 'sm',
+        body:
+          '<form id="tk-form" class="stack-sm" novalidate>' +
+            '<div class="field"><label for="tk-reg">Registration number</label>' +
+              '<input id="tk-reg" name="regNo" class="input t-num" placeholder="e.g. RJ14 GC 4521" maxlength="16" autocomplete="off"></div>' +
+            '<div class="field"><label for="tk-type">Body type</label>' + ui.truckSelect('type', t.truckTypes && t.truckTypes[0] || 'open') + '</div>' +
+            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">' +
+              '<div class="field"><label for="tk-cap">Capacity (tonnes)</label>' +
+                '<input id="tk-cap" name="capacityTons" class="input" type="number" min="1" max="60" step="0.5" value="9"></div>' +
+              '<div class="field"><label for="tk-ft">Body length (ft)</label>' +
+                '<input id="tk-ft" name="bodyFt" class="input" type="number" min="10" max="60" step="1" value="20"></div>' +
+            '</div>' +
+            '<div class="field"><label for="tk-city">Currently in</label>' +
+              ui.citySelect('currentCity', t.currentCity || t.homeBase || '', { id: 'tk-city', placeholder: 'Select city' }) + '</div>' +
+          '</form>',
+        actions: [
+          { label: 'Cancel', className: 'btn-outline', onClick: function (mo) { mo.close(); } },
+          { label: 'Add truck', icon: 'ri-add-line', onClick: doAdd }
+        ],
+        onMount: function (mo) { dom.$('#tk-reg', mo.el).focus(); }
+      });
+
+      function doAdd(mo) {
+        var d = ui.serialize(dom.$('#tk-form', mo.el));
+        if (!(d.regNo || '').trim()) { ui.setError(dom.$('#tk-reg', mo.el), 'Enter a registration number'); return; }
+        if (!d.currentCity) { ui.setError(dom.$('#tk-city', mo.el), 'Pick where the truck is'); return; }
+        mo.setBusy(true);
+        var r = act.addTruck({
+          ownerId: me.id, regNo: d.regNo, type: d.type,
+          capacityTons: Number(d.capacityTons) || 9, bodyFt: Number(d.bodyFt) || 20,
+          currentCity: d.currentCity
+        });
+        if (!r || r.error) { mo.setBusy(false); CB.toast((r && r.error) || 'Could not add truck', 'warn'); return; }
+        mo.close();
+        CB.toast(r.truck.regNo + ' added to your fleet', 'ok');
+      }
+    }
+
+    function render(ctx) {
+      var t = q.transporter(me.id) || { docs: {} };
+      var card = q.transporterCard(me.id);
+      var trucks = q.trucksOf(me.id);
+      var idle = trucks.filter(function (x) { return x.status === 'idle'; });
+      var onTrip = trucks.filter(function (x) { return x.status === 'on-trip'; });
+      var docs = t.docs || {};
+      var cleared = ['gst', 'pan', 'rc'].filter(function (k) { return docs[k] === 'verified'; }).length;
+
+      ctx.main.innerHTML =
+        '<div class="page-head"><div class="page-head-text">' +
+          '<h2>Fleet &amp; compliance</h2><p class="t-lead">Your trucks and your paperwork — the two things that decide which loads you can win.</p>' +
+        '</div><div class="page-actions">' +
+          '<button class="btn" id="add-truck"><i class="ri-add-line"></i>Add truck</button>' +
+        '</div></div>' +
+
+        '<div class="stat-grid">' +
+          ui.statTile({ icon: 'ri-caravan-line', value: trucks.length, label: 'Trucks in fleet', foot: (t.truckTypes || []).length + ' body type' + ((t.truckTypes || []).length === 1 ? '' : 's') }) +
+          ui.statTile({ icon: 'ri-checkbox-circle-line', value: idle.length, label: 'Available now', foot: idle.length ? 'ready to load' : 'all deployed' }) +
+          ui.statTile({ icon: 'ri-truck-line', value: onTrip.length, label: 'On trips', foot: 'currently moving freight' }) +
+          ui.statTile({ icon: 'ri-verified-badge-line', value: t.verified ? 'Verified' : cleared + '/3', label: 'Compliance', foot: t.verified ? 'badge active on your bids' : 'documents cleared' }) +
+        '</div>' +
+
+        '<div class="split"><div class="section-block">' +
+          '<div class="block-head"><h3>Your trucks</h3><span class="t-small">' + trucks.length + '</span></div>' +
+          (trucks.length
+            ? '<div class="cards">' + trucks.map(truckCard).join('') + '</div>'
+            : ui.empty('ri-caravan-line', 'No trucks yet', 'Add your first vehicle to start getting matched to loads.',
+                '<button class="btn" id="add-truck"><i class="ri-add-line"></i>Add a truck</button>')) +
+        '</div>' +
+
+        '<div class="split-aside">' +
+          '<div class="card"><div class="block-head"><h3 style="font-size:1rem">Verification centre</h3>' +
+            (t.verified ? '<span class="chip chip-xs chip-ok"><i class="ri-verified-badge-fill"></i>Verified</span>'
+                        : '<span class="chip chip-xs chip-warn">' + cleared + ' of 3</span>') + '</div>' +
+            (t.verified
+              ? '<div class="notice notice-ok" style="margin-bottom:.5rem"><i class="ri-shield-check-line"></i><div>All documents cleared. Your bids carry the verified badge shippers filter for.</div></div>'
+              : '<p class="t-small" style="margin-bottom:.5rem">Verified carriers win more work at better rates. Upload each document, then approve it as the reviewer would in this demo.</p>') +
+            docRow('gst', 'GST registration', 'ri-bank-line', 'Goods &amp; Services Tax certificate') +
+            docRow('pan', 'PAN card', 'ri-profile-line', 'Business permanent account number') +
+            docRow('rc', 'Vehicle RC', 'ri-file-list-3-line', 'Registration certificate for your fleet') +
+            '<div class="doc-row"><span class="doc-ico"><i class="ri-alarm-warning-line"></i></span>' +
+              '<div class="doc-info"><strong>Hazmat licence</strong><small>Needed for chemical &amp; flammable freight</small></div>' +
+              (t.hazmatLicence ? '<span class="chip chip-xs chip-ok"><i class="ri-shield-check-line"></i>On file</span>' : '<span class="t-small">Not held</span>') +
+            '</div>' +
+            '<p class="t-small" style="margin-top:.75rem;color:var(--ink-3)"><i class="ri-information-line"></i> Demo — “Approve” stands in for CargoBid’s compliance team clearing a real document.</p>' +
+          '</div>' +
+
+          '<div class="card"><h3 style="font-size:1rem;margin-bottom:.6rem">How fleet drives matching</h3>' +
+            '<div class="stack-sm t-small">' +
+              '<div class="row" style="gap:.55rem;align-items:flex-start"><i class="ri-map-pin-range-line" style="color:var(--accent-deep);margin-top:.1rem;flex:0 0 auto"></i><span>Trucks sitting near a pickup score higher — location is 30% of fit.</span></div>' +
+              '<div class="row" style="gap:.55rem;align-items:flex-start"><i class="ri-checkbox-circle-line" style="color:var(--accent-deep);margin-top:.1rem;flex:0 0 auto"></i><span>An <strong>available</strong> truck of the right type beats one that is off duty.</span></div>' +
+              '<div class="row" style="gap:.55rem;align-items:flex-start"><i class="ri-arrow-go-back-line" style="color:var(--accent-deep);margin-top:.1rem;flex:0 0 auto"></i><span>When a truck ends up away from base, its loads surface on return-loads.</span></div>' +
+            '</div></div>' +
+        '</div></div>';
+    }
+  }());
+  </script>
+</body>
+</html>

@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Marketplace · CargoBid</title>
+  <meta name="theme-color" content="#F4F6FD">
+  <link rel="icon" href="../assets/img/logo.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300..700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.css" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/base.css">
+  <link rel="stylesheet" href="../assets/css/app.css">
+</head>
+<body>
+  <a class="skip-link" href="#app-main">Skip to content</a>
+  <div class="grain" aria-hidden="true"></div>
+
+  <script src="../assets/js/core.js"></script>
+  <script src="../assets/js/match.js"></script>
+  <script src="../assets/js/seed.js"></script>
+  <script src="../assets/js/sim.js"></script>
+  <script src="../assets/js/ui.js"></script>
+  <script src="../assets/js/console.js"></script>
+  <script src="../assets/js/shell.js"></script>
+  <script>
+  (function () {
+    'use strict';
+    var dom = CB.dom, esc = CB.util.esc, f = CB.fmt, q = CB.q, ui = CB.ui, match = CB.match;
+
+    var ctx = CB.shell.mount({
+      role: 'transporter', nav: 'marketplace', title: 'Marketplace',
+      live: false, render: renderShell
+    });
+    if (!ctx) return;
+    var me = ctx.user;
+
+    /* Live: refresh results (auctions move) but never the search box. */
+    CB.on('change', paint);
+
+    /* Delegated, bound once — survive the paint() innerHTML swap. */
+    dom.on(ctx.main, 'input', '#mkt-q', paint);
+    dom.on(ctx.main, 'change', '#mkt-truck,#mkt-origin,#mkt-dest,#mkt-sort,#mkt-showall,#mkt-backhaul,#mkt-notbid', paint);
+
+    /* ==================================================================== */
+    function renderShell(ctx) {
+      var truckOpts = '<option value="">Any truck type</option>' +
+        CB.TRUCK_TYPES.map(function (t) { return '<option value="' + t.key + '">' + esc(t.label) + '</option>'; }).join('');
+
+      ctx.main.innerHTML =
+        '<div class="page-head"><div class="page-head-text">' +
+          '<h2>Marketplace</h2><p class="t-lead">Open loads scored against your fleet, lanes and where your trucks are right now.</p>' +
+        '</div><div class="page-actions">' +
+          '<a class="btn btn-outline" href="return-loads.html"><i class="ri-arrow-go-back-line"></i>Return loads</a>' +
+        '</div></div>' +
+
+        '<div class="toolbar">' +
+          '<div class="search toolbar-grow"><i class="ri-search-line"></i>' +
+            '<input id="mkt-q" class="input" type="search" placeholder="Search by city, material or load ID…" autocomplete="off"></div>' +
+          '<label class="row" style="gap:.4rem;cursor:pointer;white-space:nowrap">' +
+            '<input type="checkbox" id="mkt-showall"><span class="t-small">Show out-of-range</span></label>' +
+        '</div>' +
+
+        '<div class="form-grid" style="grid-template-columns:repeat(4,minmax(0,1fr));margin-top:.75rem">' +
+          '<div class="field"><label for="mkt-truck">Truck type</label>' +
+            '<select class="select" id="mkt-truck" name="truck">' + truckOpts + '</select></div>' +
+          '<div class="field"><label for="mkt-origin">Origin</label>' +
+            ui.citySelect('origin', '', { id: 'mkt-origin', placeholder: 'Any origin' }) + '</div>' +
+          '<div class="field"><label for="mkt-dest">Destination</label>' +
+            ui.citySelect('destination', '', { id: 'mkt-dest', placeholder: 'Any destination' }) + '</div>' +
+          '<div class="field"><label for="mkt-sort">Sort by</label>' +
+            '<select class="select" id="mkt-sort" name="sort">' +
+              '<option value="fit">Best fit</option>' +
+              '<option value="near">Closest to me</option>' +
+              '<option value="closing">Closing soon</option>' +
+              '<option value="value">Best value</option>' +
+              '<option value="new">Newest</option>' +
+            '</select></div>' +
+        '</div>' +
+
+        '<div class="filters" style="margin-top:.75rem">' +
+          '<label class="row" style="gap:.4rem;cursor:pointer"><input type="checkbox" id="mkt-backhaul"><span class="t-small">Backhaul toward home only</span></label>' +
+          '<label class="row" style="gap:.4rem;cursor:pointer"><input type="checkbox" id="mkt-notbid"><span class="t-small">Not yet bid</span></label>' +
+        '</div>' +
+
+        '<div id="mkt-results" style="margin-top:var(--s-4)"></div>';
+      paint();
+    }
+
+    function val(sel) { var el = dom.$(sel, ctx.main); return el ? el.value : ''; }
+    function chk(sel) { var el = dom.$(sel, ctx.main); return !!(el && el.checked); }
+
+    function filters() {
+      return {
+        query: val('#mkt-q'),
+        truckType: val('#mkt-truck'),
+        origin: val('#mkt-origin'),
+        destination: val('#mkt-dest'),
+        sort: val('#mkt-sort') || 'fit',
+        showAll: chk('#mkt-showall'),
+        backhaulOnly: chk('#mkt-backhaul'),
+        notBidYet: chk('#mkt-notbid')
+      };
+    }
+
+    /* ---- one load card, fit front and centre ---- */
+    function boardCard(row) {
+      var l = row.load, fit = row.fit, tt = CB.truckType(l.need.truckType);
+      var band = match.fitBand(fit.score);
+      var bandKey = CB.score.band(fit.score).key;
+      var bh = fit.backhaul;
+
+      var reasons = (fit.reasons || []).slice(0, 2).map(function (r) {
+        return '<div class="fit-reason"><i class="' + r.icon + '"></i>' + esc(r.text) + '</div>';
+      }).join('');
+      var blocker = (fit.blockers && fit.blockers.length)
+        ? '<div class="fit-reason is-block"><i class="ri-error-warning-line"></i>' + esc(fit.blockers[0]) + '</div>' : '';
+
+      var reachChip = fit.reach.inRange
+        ? (fit.reach.basis === 'current'
+            ? '<span class="chip chip-xs chip-ok"><i class="ri-map-pin-range-line"></i>' + f.km(fit.reach.currentKm) + ' away</span>'
+            : '<span class="chip chip-xs"><i class="ri-map-pin-range-line"></i>' + f.km(fit.reach.homeKm) + ' from base</span>')
+        : '<span class="chip chip-xs chip-warn"><i class="ri-map-pin-range-line"></i>Out of range</span>';
+
+      var priceBit = l.mode === 'blind'
+        ? '<span class="chip chip-xs chip-accent"><i class="ri-eye-off-line"></i>Sealed · ' + row.bidCount + '</span>'
+        : (row.lowest
+            ? '<strong class="t-num">' + f.money(row.lowest.amount) + '</strong> <span class="t-small">leading · ' + row.bidCount + ' bid' + (row.bidCount === 1 ? '' : 's') + '</span>'
+            : '<span class="t-small">Typical ' + f.money(row.guide.base) + ' · no bids yet</span>');
+
+      return '<a class="card card-lift" href="load.html?id=' + l.id + '">' +
+        '<div class="load-card">' +
+          '<div class="load-card-top">' +
+            '<div><div class="load-card-route">' + ui.route(l) + '</div>' +
+              '<p class="t-small" style="margin-top:.25rem">' + esc(l.material.name) + ' · ' + f.tons(l.material.weightTons) + ' · ' + esc(tt.label) + '</p></div>' +
+            '<span class="fit-badge fit-' + bandKey + '"><i class="ri-focus-3-line"></i>' + fit.score + ' · ' + esc(band.label) + '</span>' +
+          '</div>' +
+          '<div class="load-card-body">' +
+            '<span class="chip chip-xs"><i class="ri-route-line"></i>' + f.km(l.distanceKm) + '</span>' +
+            reachChip +
+            (bh && bh.is ? '<span class="chip chip-xs chip-ok"><i class="ri-arrow-go-back-line"></i>' + bh.coverage + '% backhaul</span>' : '') +
+            ui.flagChips(l.material.flags, 2) +
+          '</div>' +
+          (reasons || blocker ? '<div class="fit-reasons">' + reasons + blocker + '</div>' : '') +
+          '<div class="load-card-foot">' +
+            '<span>' + priceBit + '</span>' +
+            (row.myBid
+              ? '<span class="chip chip-xs chip-accent"><i class="ri-price-tag-3-line"></i>You: ' + f.money(row.myBid.amount) + '</span>'
+              : ui.countdown(l.bidCloseAt, 'Closes ')) +
+          '</div>' +
+        '</div></a>';
+    }
+
+    function paint() {
+      var box = dom.$('#mkt-results', ctx.main);
+      if (!box) return;
+      var fl = filters();
+      var rows = safe(function () { return match.board(me.id, fl); }, []);
+
+      box.innerHTML = rows.length
+        ? '<div class="row-between" style="margin-bottom:.75rem"><p class="t-small">' + rows.length + ' load' + (rows.length === 1 ? '' : 's') +
+            (fl.showAll ? '' : ' on your lanes') + '</p>' +
+            '<p class="t-small">' + (fl.backhaulOnly ? 'Backhaul only · ' : '') + 'sorted by ' + esc(sortLabel(fl.sort)) + '</p></div>' +
+          '<div class="cards cards-lg">' + rows.map(boardCard).join('') + '</div>'
+        : ui.empty('ri-compass-3-line',
+            fl.query ? 'Nothing matches “' + esc(fl.query) + '”' : 'No loads match these filters',
+            fl.showAll
+              ? 'Try clearing the truck type, lane or handling filters.'
+              : 'These are loads within your service radius. Tick “Show out-of-range” to see every open load, or widen your radius from the city chip up top.',
+            fl.showAll ? '' : '<button class="btn btn-outline" id="mkt-expand"><i class="ri-global-line"></i>Show out-of-range loads</button>');
+
+      var expand = dom.$('#mkt-expand', box);
+      if (expand) expand.addEventListener('click', function () {
+        var cb = dom.$('#mkt-showall', ctx.main); if (cb) { cb.checked = true; paint(); }
+      });
+      ui.startCountdowns();
+    }
+
+    function sortLabel(k) {
+      return { fit: 'best fit', near: 'closest', closing: 'closing soon', value: 'best value', new: 'newest' }[k] || 'best fit';
+    }
+    function safe(fn, d) { try { var v = fn(); return v == null ? d : v; } catch (e) { return d; } }
+  }());
+  </script>
+</body>
+</html>

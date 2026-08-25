@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>My loads · CargoBid</title>
+  <meta name="theme-color" content="#F4F6FD">
+  <link rel="icon" href="../assets/img/logo.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300..700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.css" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/base.css">
+  <link rel="stylesheet" href="../assets/css/app.css">
+</head>
+<body>
+  <a class="skip-link" href="#app-main">Skip to content</a>
+  <div class="grain" aria-hidden="true"></div>
+
+  <script src="../assets/js/core.js"></script>
+  <script src="../assets/js/match.js"></script>
+  <script src="../assets/js/seed.js"></script>
+  <script src="../assets/js/sim.js"></script>
+  <script src="../assets/js/ui.js"></script>
+  <script src="../assets/js/console.js"></script>
+  <script src="../assets/js/shell.js"></script>
+  <script>
+  (function () {
+    'use strict';
+    var dom = CB.dom, esc = CB.util.esc, f = CB.fmt, q = CB.q, ui = CB.ui;
+    var filter = CB.param('filter') || 'all';
+    var query = '';
+
+    var TABS = [
+      { key: 'all', label: 'All' },
+      { key: 'open', label: 'Bidding' },
+      { key: 'awarded', label: 'Awarded' },
+      { key: 'delivered', label: 'Delivered' }
+    ];
+
+    var ctx = CB.shell.mount({ role: 'shipper', nav: 'loads', title: 'My loads', live: false, render: renderShell });
+    if (!ctx) return;
+    CB.on('change', paint);
+
+    dom.on(ctx.main, 'click', '[data-filter]', function () {
+      filter = this.getAttribute('data-filter');
+      dom.$$('[data-filter]', ctx.main).forEach(function (b) {
+        b.setAttribute('aria-selected', b === this ? 'true' : 'false');
+      }, this);
+      paint();
+    });
+    dom.on(ctx.main, 'input', '#load-q', function () { query = this.value.trim().toLowerCase(); paint(); });
+
+    function matchesFilter(l, key) {
+      if (key === 'open') return l.status === 'open' || l.status === 'closed';
+      if (key === 'awarded') return l.status === 'awarded' || l.status === 'in-transit';
+      if (key === 'delivered') return l.status === 'delivered';
+      return true; /* 'all' shows every status, cancelled included */
+    }
+    function inFilter(l) { return matchesFilter(l, filter); }
+    function inQuery(l) {
+      if (!query) return true;
+      return (l.id + ' ' + l.origin.city + ' ' + l.destination.city + ' ' + l.material.name + ' ' + (l.title || ''))
+        .toLowerCase().indexOf(query) > -1;
+    }
+
+    function loadCard(l) {
+      var bids = q.liveBidsFor(l.id), low = q.lowestBid(l.id), tt = CB.truckType(l.need.truckType);
+      var trip = q.tripFor(l.id);
+      var foot;
+      if (l.status === 'open') {
+        foot = (low
+          ? '<strong class="t-num" style="font-size:1.0625rem">' + f.money(low.amount) + '</strong> <span class="t-small">lowest · ' + bids.length + ' bid' + (bids.length === 1 ? '' : 's') + '</span>'
+          : (l.mode === 'blind'
+              ? '<span class="chip chip-xs chip-accent"><i class="ri-eye-off-line"></i>Sealed · ' + bids.length + '</span>'
+              : '<span class="t-small">No bids yet</span>')) +
+          ui.countdown(l.bidCloseAt, 'Closes ');
+      } else if (l.status === 'closed') {
+        foot = (low ? '<strong class="t-num">' + f.money(low.amount) + '</strong> <span class="t-small">of ' + bids.length + '</span>' : '<span class="t-small">No bids</span>') +
+          '<span class="chip chip-xs chip-warn"><i class="ri-gavel-line"></i>Awaiting decision</span>';
+      } else if (trip) {
+        var c = q.transporterCard(trip.transporterId);
+        foot = '<span class="t-small">' + (c ? esc(c.company) : '') + ' · <span class="t-num">' + f.money(trip.amount) + '</span></span>' +
+          (l.status === 'delivered'
+            ? '<span class="chip chip-xs chip-ok"><i class="ri-check-double-line"></i>Delivered</span>'
+            : '<span class="chip chip-xs chip-accent"><i class="ri-truck-line"></i>On the road</span>');
+      } else if (l.status === 'cancelled') {
+        foot = '<span class="t-small" style="color:var(--ink-3)">Withdrawn</span>';
+      } else { foot = ''; }
+
+      return '<a class="card card-lift" href="load.html?id=' + l.id + '">' +
+        '<div class="load-card">' +
+          '<div class="load-card-top">' +
+            '<div><div class="load-card-route">' + ui.route(l) + '</div>' +
+              '<p class="t-small" style="margin-top:.25rem">' + esc(l.material.name) + ' · ' + f.tons(l.material.weightTons) + '</p></div>' +
+            ui.statusChip(l.status) +
+          '</div>' +
+          '<div class="load-card-body">' +
+            '<span class="chip chip-xs"><i class="' + tt.icon + '"></i>' + esc(tt.label) + '</span>' +
+            '<span class="chip chip-xs"><i class="ri-route-line"></i>' + f.km(l.distanceKm) + '</span>' +
+            ui.flagChips(l.material.flags, 2) +
+          '</div>' +
+          '<div class="load-card-foot">' + foot + '</div>' +
+        '</div></a>';
+    }
+
+    function paint() {
+      var me = ctx.user;
+      var all = q.loadsOf(me.id);
+      var rows = all.filter(inFilter).filter(inQuery);
+      var box = dom.$('#load-results', ctx.main);
+      if (!box) return;
+
+      /* keep tab counts fresh without touching the search box */
+      dom.$$('[data-filter]', ctx.main).forEach(function (b) {
+        var k = b.getAttribute('data-filter');
+        var n = all.filter(function (l) { return matchesFilter(l, k); }).length;
+        var badge = dom.$('.tab-count', b);
+        if (badge) badge.textContent = n;
+      });
+
+      box.innerHTML = rows.length
+        ? '<p class="t-small" style="margin-bottom:.75rem">' + rows.length + ' load' + (rows.length === 1 ? '' : 's') + '</p>' +
+          '<div class="cards">' + rows.map(loadCard).join('') + '</div>'
+        : ui.empty('ri-inbox-line',
+            query ? 'Nothing matches “' + esc(query) + '”' : 'No loads here yet',
+            query ? 'Try a different city, material or load ID.' : 'Loads you post will show up here, grouped by where they are in the journey.',
+            query ? '' : '<a class="btn" href="post-load.html"><i class="ri-add-line"></i>Post a load</a>');
+      ui.startCountdowns();
+    }
+
+    function renderShell(ctx) {
+      ctx.main.innerHTML =
+        '<div class="page-head"><div class="page-head-text">' +
+          '<h2>My loads</h2><p class="t-lead">Every load you have posted, from live auction to delivered.</p>' +
+        '</div><div class="page-actions">' +
+          '<a class="btn" href="post-load.html"><i class="ri-add-line"></i>Post a load</a>' +
+        '</div></div>' +
+
+        '<div class="toolbar">' +
+          '<div class="segment" role="tablist" style="width:auto">' +
+            TABS.map(function (t) {
+              return '<button data-filter="' + t.key + '" aria-selected="' + (t.key === filter) + '">' +
+                esc(t.label) + ' <span class="tab-count t-num">0</span></button>';
+            }).join('') +
+          '</div>' +
+          '<div class="search toolbar-grow"><i class="ri-search-line"></i>' +
+            '<input id="load-q" class="input" type="search" placeholder="Search by city, material or load ID…" autocomplete="off"></div>' +
+        '</div>' +
+
+        '<div id="load-results" style="margin-top:var(--s-4)"></div>';
+      paint();
+    }
+  }());
+  </script>
+</body>
+</html>

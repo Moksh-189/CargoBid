@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 400" role="img" aria-labelledby="tWorkerWave"><title id="tWorkerWave">Warehouse worker waving</title>
+<g stroke="#14161C" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">
+  <ellipse cx="160" cy="374" rx="72" ry="15" fill="#8DB0F4" opacity="0.18" stroke="none"/>
+
+  <!-- right leg + boot (back, shaded) -->
+  <path d="M168 262 L196 262 L196 352 L168 352 Z" fill="#2A2F3D"/>
+  <path d="M182 266 L182 350" opacity="0.45"/>
+  <path d="M166 352 L196 352 L196 362 L184 368 L166 368 Z" fill="#2A2F3D"/>
+
+  <!-- left leg + boot (front) -->
+  <path d="M124 262 L152 262 L152 352 L124 352 Z" fill="#3D4354"/>
+  <path d="M138 266 L138 350" opacity="0.45"/>
+  <path d="M122 352 L152 352 L152 362 L140 368 L122 368 Z" fill="#3D4354"/>
+
+  <!-- pelvis + belt -->
+  <path d="M120 248 L200 248 L200 270 L120 270 Z" fill="#3D4354"/>
+  <path d="M120 250 L200 250 L200 258 L120 258 Z" fill="#2A2F3D"/>
+  <ellipse cx="160" cy="254" rx="5" ry="4" fill="#F5C544"/>
+
+  <!-- torso : blue shirt -->
+  <path d="M118 250 L118 166 Q118 150 134 150 L186 150 Q202 150 202 166 L202 250 Z" fill="#8DB0F4"/>
+
+  <!-- hi-vis vest + reflective bands -->
+  <path d="M128 250 L128 162 L192 162 L192 250 Z" fill="#F5C544"/>
+  <path d="M186 162 L192 162 L192 250 L186 250 Z" fill="#DFA92C"/>
+  <path d="M150 162 L160 176 L170 162 Z" fill="#6D97E8"/>
+  <path d="M160 176 L160 250" opacity="0.45"/>
+  <path d="M128 200 L192 200" opacity="0.45"/>
+  <path d="M128 214 L192 214" opacity="0.45"/>
+  <path d="M142 176 L142 250" opacity="0.45"/>
+  <path d="M178 176 L178 250" opacity="0.45"/>
+
+  <!-- left arm at side -->
+  <path d="M108 172 L126 166 L132 232 L114 238 Z" fill="#6D97E8"/>
+  <path d="M112 226 L130 220" opacity="0.45"/>
+  <ellipse cx="121" cy="242" rx="9" ry="8" fill="#EEF3FE"/>
+
+  <!-- neck + head -->
+  <path d="M150 148 L170 148 L170 138 L150 138 Z" fill="#EEF3FE"/>
+  <ellipse cx="160" cy="120" rx="19" ry="21" fill="#FFFFFF"/>
+  <ellipse cx="142" cy="122" rx="4" ry="6" fill="#EEF3FE"/>
+  <path d="M151 120 L147 126" opacity="0.45"/>
+  <path d="M146 116 Q160 122 174 116" opacity="0.45" fill="none"/>
+
+  <!-- hard hat -->
+  <path d="M138 112 Q160 82 182 112 Z" fill="#F7D46B"/>
+  <path d="M130 112 L190 112 L184 120 L136 120 Z" fill="#F5C544"/>
+  <path d="M160 84 L160 112" opacity="0.45"/>
+  <ellipse cx="150" cy="98" rx="6" ry="4" fill="#FFFFFF" opacity="0.45" stroke="none"/>
+
+  <!-- right arm raised, waving -->
+  <path d="M188 160 L206 156 L222 108 L206 104 Z" fill="#8DB0F4"/>
+  <path d="M212 112 L226 108 L214 64 L200 68 Z" fill="#6D97E8"/>
+  <ellipse cx="207" cy="58" rx="10" ry="9" fill="#EEF3FE"/>
+  <path d="M201 52 L205 44" opacity="0.9"/>
+  <path d="M208 50 L211 42" opacity="0.9"/>
+  <path d="M214 53 L218 47" opacity="0.9"/>
+</g>
+</svg>

@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>My bids · CargoBid</title>
+  <meta name="theme-color" content="#F4F6FD">
+  <link rel="icon" href="../assets/img/logo.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300..700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.css" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/base.css">
+  <link rel="stylesheet" href="../assets/css/app.css">
+</head>
+<body>
+  <a class="skip-link" href="#app-main">Skip to content</a>
+  <div class="grain" aria-hidden="true"></div>
+
+  <script src="../assets/js/core.js"></script>
+  <script src="../assets/js/match.js"></script>
+  <script src="../assets/js/seed.js"></script>
+  <script src="../assets/js/sim.js"></script>
+  <script src="../assets/js/ui.js"></script>
+  <script src="../assets/js/console.js"></script>
+  <script src="../assets/js/shell.js"></script>
+  <script>
+  (function () {
+    'use strict';
+    var dom = CB.dom, esc = CB.util.esc, f = CB.fmt, q = CB.q, ui = CB.ui, act = CB.act;
+    var filter = 'all';
+
+    var ctx = CB.shell.mount({ role: 'transporter', nav: 'bids', title: 'My bids', live: true, render: render });
+    if (!ctx) return;
+    var me = ctx.user;
+
+    dom.on(ctx.main, 'click', '[data-filter]', function () { filter = this.getAttribute('data-filter'); ctx.refresh(); });
+    dom.on(ctx.main, 'click', '[data-withdraw]', function () {
+      var id = this.getAttribute('data-withdraw');
+      var b = q.bid(id); if (!b) return;
+      var l = q.load(b.loadId);
+      ui.confirm({
+        title: 'Withdraw this bid?', tone: 'danger', icon: 'ri-close-line', confirmLabel: 'Withdraw bid',
+        subtitle: l ? (l.origin.city + ' → ' + l.destination.city + ' · you can re-bid while it stays open.') : ''
+      }).then(function (ok) {
+        if (!ok) return;
+        var r = act.withdrawBid(id);
+        if (r && r.error) { CB.toast(r.error, 'warn'); return; }
+        CB.toast('Bid withdrawn', 'warn');
+      });
+    });
+
+    function pendingCounter(b) {
+      var c = b.counters && b.counters[b.counters.length - 1];
+      return (c && c.by === 'shipper' && c.state === 'pending') ? c : null;
+    }
+
+    var TABS = [
+      { key: 'all', label: 'All' },
+      { key: 'live', label: 'Live' },
+      { key: 'won', label: 'Won' },
+      { key: 'ended', label: 'Ended' }
+    ];
+    function bucket(b) {
+      var l = q.load(b.loadId);
+      if (b.status === 'won') return 'won';
+      if (b.status === 'withdrawn' || b.status === 'lost') return 'ended';
+      if (l && (l.status === 'open' || l.status === 'closed')) return 'live';
+      return 'ended';
+    }
+    function inTab(b, key) { return key === 'all' ? true : bucket(b) === key; }
+
+    function bidCard(b) {
+      var l = q.load(b.loadId); if (!l) return '';
+      var st = CB.BID_STATUS[b.status] || { chip: 'chip', label: b.status };
+      var low = q.lowestBid(l.id);
+      var lead = b.status === 'active';
+      var pend = pendingCounter(b);
+      var trip = b.status === 'won' ? q.tripFor(l.id) : null;
+      var open = l.status === 'open';
+
+      var context;
+      if (b.status === 'won') context = '<span class="chip chip-xs chip-ok"><i class="ri-award-line"></i>You won this load</span>';
+      else if (b.status === 'lost') context = '<span class="chip chip-xs"><i class="ri-close-line"></i>Awarded elsewhere</span>';
+      else if (b.status === 'withdrawn') context = '<span class="chip chip-xs"><i class="ri-arrow-go-back-line"></i>Withdrawn</span>';
+      else if (l.status === 'cancelled') context = '<span class="chip chip-xs chip-stop"><i class="ri-close-circle-line"></i>Load cancelled</span>';
+      else if (l.mode === 'blind') context = '<span class="chip chip-xs chip-accent"><i class="ri-eye-off-line"></i>Sealed bid</span>';
+      else if (lead) context = '<span class="chip chip-xs chip-ok"><i class="ri-flag-2-line"></i>Leading</span>';
+      else context = '<span class="chip chip-xs chip-warn"><i class="ri-arrow-down-line"></i>Outbid' + (low ? ' · lowest ' + f.money(low.amount) : '') + '</span>';
+
+      return '<div class="card">' +
+        '<div class="load-card-top">' +
+          '<a href="load.html?id=' + l.id + '" style="min-width:0;flex:1"><div class="load-card-route">' + ui.route(l) + '</div>' +
+            '<p class="t-small" style="margin-top:.25rem">' + esc(l.material.name) + ' · ' + f.tons(l.material.weightTons) + ' · ' + f.km(l.distanceKm) + '</p></a>' +
+          '<span class="chip chip-xs ' + st.chip + '">' + esc(st.label) + '</span>' +
+        '</div>' +
+        '<div class="row" style="gap:1rem;align-items:baseline;margin:.6rem 0 .5rem">' +
+          '<div class="t-num" style="font-size:1.35rem;font-weight:650;letter-spacing:-.02em">' + f.money(b.amount) + '</div>' +
+          '<span class="t-small">' + f.perKm(b.amount, l.distanceKm) + ' · pickup in ' + f.hours(b.etaPickupHrs) + '</span>' +
+        '</div>' +
+        '<div class="load-card-body">' + context +
+          (pend ? '<span class="chip chip-xs chip-warn"><i class="ri-arrow-left-right-line"></i>Counter ' + f.money(pend.amount) + ' — respond</span>' : '') +
+          (open ? ui.countdown(l.bidCloseAt, 'Closes ') : '') +
+        '</div>' +
+        '<div class="row" style="gap:.5rem;margin-top:.85rem;flex-wrap:wrap">' +
+          (trip ? '<a class="btn btn-sm" href="trips.html?id=' + trip.id + '"><i class="ri-truck-line"></i>Track trip</a>' : '') +
+          '<a class="btn btn-sm ' + (open ? '' : 'btn-outline') + '" href="load.html?id=' + l.id + '"><i class="ri-' + (open ? 'edit-line' : 'eye-line') + '"></i>' +
+            (open ? (pend ? 'Respond' : 'View &amp; edit') : 'View load') + '</a>' +
+          (open && b.status !== 'withdrawn' ? '<button class="btn btn-sm btn-quiet" data-withdraw="' + b.id + '"><i class="ri-close-line"></i>Withdraw</button>' : '') +
+        '</div>' +
+      '</div>';
+    }
+
+    function render(ctx) {
+      var all = q.bidsOf(me.id);
+      var tp = q.transporter(me.id) || {};
+      var live = all.filter(function (b) { return bucket(b) === 'live'; });
+      var leading = all.filter(function (b) { return b.status === 'active'; }).length;
+      var won = all.filter(function (b) { return b.status === 'won'; });
+      var awaiting = live.filter(pendingCounter).length;
+
+      var counts = {};
+      TABS.forEach(function (t) { counts[t.key] = all.filter(function (b) { return inTab(b, t.key); }).length; });
+      var rows = all.filter(function (b) { return inTab(b, filter); });
+
+      ctx.main.innerHTML =
+        '<div class="page-head"><div class="page-head-text">' +
+          '<h2>My bids</h2><p class="t-lead">Every rate you have put on the table, live to settled.</p>' +
+        '</div><div class="page-actions">' +
+          '<a class="btn" href="marketplace.html"><i class="ri-search-line"></i>Find loads</a>' +
+        '</div></div>' +
+
+        (all.length ? '<div class="stat-grid">' +
+          ui.statTile({ icon: 'ri-auction-line', value: live.length, label: 'Live bids', foot: leading ? '<span style="color:var(--ok)">' + leading + ' leading</span>' : 'none leading' }) +
+          ui.statTile({ icon: 'ri-arrow-left-right-line', value: awaiting, label: 'Counters to answer', foot: awaiting ? 'reply to keep them alive' : 'all clear' }) +
+          ui.statTile({ icon: 'ri-award-line', value: won.length, label: 'Bids won', foot: 'freight secured' }) +
+          ui.statTile({ icon: 'ri-percent-line', value: CB.score.winRate(tp) + '%', label: 'Win rate', foot: (tp.bidsWon || 0) + ' of ' + (tp.bidsPlaced || 0) + ' bids' }) +
+        '</div>' : '') +
+
+        (all.length
+          ? '<div class="toolbar"><div class="segment" role="tablist" style="width:auto">' +
+              TABS.map(function (t) {
+                return '<button data-filter="' + t.key + '" aria-selected="' + (t.key === filter) + '">' +
+                  esc(t.label) + ' <span class="tab-count t-num">' + counts[t.key] + '</span></button>';
+              }).join('') +
+            '</div></div>' +
+            (rows.length
+              ? '<div class="cards" style="margin-top:var(--s-4)">' + rows.map(bidCard).join('') + '</div>'
+              : ui.empty('ri-inbox-line', 'Nothing in this view', 'No bids match this filter yet.'))
+          : ui.empty('ri-price-tag-3-line', 'No bids yet',
+              'Browse the marketplace, find a load that fits your fleet, and put a rate on it. Your bids track here from live auction to signed trip.',
+              '<a class="btn" href="marketplace.html"><i class="ri-search-line"></i>Find loads to bid on</a>'));
+
+      ui.startCountdowns();
+    }
+  }());
+  </script>
+</body>
+</html>

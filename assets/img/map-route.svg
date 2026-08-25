@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 400" role="img" aria-labelledby="tMapRoute"><title id="tMapRoute">Isometric route map with origin and destination pins</title>
+<g stroke="#14161C" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">
+  <ellipse cx="280" cy="356" rx="220" ry="26" fill="#8DB0F4" opacity="0.18" stroke="none"/>
+
+  <!-- map tile : top surface + slab thickness -->
+  <path d="M280 130 L490 230 L280 330 L70 230 Z" fill="#EEF3FE"/>
+  <path d="M490 230 L490 250 L280 350 L280 330 Z" fill="#B9CFF9"/>
+  <path d="M70 230 L70 250 L280 350 L280 330 Z" fill="#8DB0F4"/>
+
+  <!-- faint terrain contours -->
+  <path d="M120 232 Q240 205 380 232" opacity="0.45" fill="none"/>
+  <path d="M150 262 Q270 244 400 260" opacity="0.45" fill="none"/>
+
+  <!-- small map buildings -->
+  <path d="M120 196 L140 206 L120 216 L100 206 Z" fill="#DCE7FD"/>
+  <path d="M140 206 L140 220 L120 230 L120 216 Z" fill="#B9CFF9"/>
+  <path d="M100 206 L100 220 L120 230 L120 216 Z" fill="#8DB0F4"/>
+  <path d="M330 245 L346 253 L330 261 L314 253 Z" fill="#DCE7FD"/>
+  <path d="M346 253 L346 265 L330 273 L330 261 Z" fill="#B9CFF9"/>
+  <path d="M314 253 L314 265 L330 273 L330 261 Z" fill="#8DB0F4"/>
+
+  <!-- dashed route from origin to destination -->
+  <path d="M198 258 L206 252 L214 254 L206 260 Z" fill="#6D97E8"/>
+  <path d="M230 246 L238 240 L246 242 L238 248 Z" fill="#6D97E8"/>
+  <path d="M260 236 L268 230 L276 232 L268 238 Z" fill="#6D97E8"/>
+  <path d="M290 228 L298 222 L306 224 L298 230 Z" fill="#6D97E8"/>
+  <path d="M318 222 L326 216 L334 218 L326 224 Z" fill="#6D97E8"/>
+  <path d="M344 216 L352 210 L360 212 L352 218 Z" fill="#6D97E8"/>
+
+  <!-- origin pin (small) -->
+  <ellipse cx="180" cy="270" rx="11" ry="4" fill="#6D97E8" opacity="0.35" stroke="none"/>
+  <path d="M180 270 L164 240 Q164 218 180 218 Q196 218 196 240 L180 270 Z" fill="#8DB0F4"/>
+  <ellipse cx="180" cy="234" rx="7" ry="7" fill="#EEF3FE"/>
+
+  <!-- destination pin (large) + flag -->
+  <ellipse cx="380" cy="205" rx="12" ry="4" fill="#6D97E8" opacity="0.35" stroke="none"/>
+  <path d="M404 190 L404 120" />
+  <path d="M404 120 L430 128 L404 136 Z" fill="#F5C544"/>
+  <path d="M380 205 L360 168 Q360 140 380 140 Q400 140 400 168 L380 205 Z" fill="#8DB0F4"/>
+  <ellipse cx="380" cy="162" rx="9" ry="9" fill="#F7D46B"/>
+</g>
+</svg>

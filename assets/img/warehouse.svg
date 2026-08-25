@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 400" role="img" aria-labelledby="tWarehouse"><title id="tWarehouse">Logistics warehouse with loading bay</title>
+<g stroke="#14161C" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">
+  <ellipse cx="280" cy="380" rx="215" ry="28" fill="#8DB0F4" opacity="0.18" stroke="none"/>
+
+  <!-- flat roof plane -->
+  <path d="M96 196 L280 106 L464 196 L280 286 Z" fill="#EEF3FE"/>
+  <!-- roof skylights + rooftop unit -->
+  <path d="M200 190 L226 202 L200 214 L174 202 Z" fill="#B9CFF9"/>
+  <path d="M186 196 L212 208" opacity="0.45"/>
+  <path d="M340 200 L366 212 L340 224 L314 212 Z" fill="#B9CFF9"/>
+  <path d="M326 206 L352 218" opacity="0.45"/>
+  <path d="M300 138 L326 150 L300 162 L274 150 Z" fill="#DCE7FD"/>
+  <path d="M326 150 L326 166 L300 178 L300 162 Z" fill="#B9CFF9"/>
+  <path d="M274 150 L274 166 L300 178 L300 162 Z" fill="#8DB0F4"/>
+
+  <!-- parapet lips standing on the roof perimeter -->
+  <path d="M280 286 L464 196 L464 188 L280 278 Z" fill="#DCE7FD"/>
+  <path d="M280 286 L96 196 L96 188 L280 278 Z" fill="#B9CFF9"/>
+
+  <!-- front-left wall (dark) -->
+  <path d="M280 286 L96 196 L96 276 L280 366 Z" fill="#8DB0F4"/>
+  <!-- clerestory windows -->
+  <path d="M206 260 L188 251 L188 262 L206 271 Z" fill="#B9CFF9"/>
+  <path d="M192 254 L202 259" opacity="0.45"/>
+  <path d="M173 243 L155 234 L155 246 L173 255 Z" fill="#B9CFF9"/>
+  <path d="M159 237 L169 242" opacity="0.45"/>
+  <!-- personnel door -->
+  <path d="M216 290 L179 272 L179 315 L216 332 Z" fill="#6D97E8"/>
+  <ellipse cx="188" cy="296" rx="3" ry="4" fill="#F7D46B"/>
+
+  <!-- front-right wall (light) -->
+  <path d="M280 286 L464 196 L464 276 L280 366 Z" fill="#DCE7FD"/>
+  <!-- roller-shutter loading door : frame + slats -->
+  <path d="M344 264 L409 233 L409 299 L344 330 Z" fill="#3D4354"/>
+  <path d="M348 266 L405 238 L405 248 L348 276 Z" fill="#B9CFF9"/>
+  <path d="M348 276 L405 248 L405 258 L348 286 Z" fill="#8DB0F4"/>
+  <path d="M348 286 L405 258 L405 268 L348 296 Z" fill="#B9CFF9"/>
+  <path d="M348 296 L405 268 L405 278 L348 306 Z" fill="#8DB0F4"/>
+  <path d="M348 306 L405 278 L405 288 L348 316 Z" fill="#B9CFF9"/>
+  <path d="M348 316 L405 288 L405 298 L348 326 Z" fill="#8DB0F4"/>
+
+  <!-- loading-bay canopy + posts -->
+  <path d="M356 264 L356 322" />
+  <path d="M430 226 L430 262" />
+  <path d="M330 252 L430 204 L458 218 L358 266 Z" fill="#DCE7FD"/>
+  <path d="M330 252 L358 266 L358 273 L330 259 Z" fill="#8DB0F4"/>
+  <path d="M430 204 L458 218 L458 225 L430 211 Z" fill="#8DB0F4"/>
+
+  <!-- crate waiting on the apron -->
+  <path d="M250 340 L274 352 L250 364 L226 352 Z" fill="#F7D46B"/>
+  <path d="M274 352 L274 368 L250 380 L250 364 Z" fill="#F5C544"/>
+  <path d="M226 352 L226 368 L250 380 L250 364 Z" fill="#DFA92C"/>
+</g>
+</svg>

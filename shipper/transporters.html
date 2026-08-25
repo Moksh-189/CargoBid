@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Transporters · CargoBid</title>
+  <meta name="theme-color" content="#F4F6FD">
+  <link rel="icon" href="../assets/img/logo.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300..700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.css" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/base.css">
+  <link rel="stylesheet" href="../assets/css/app.css">
+</head>
+<body>
+  <a class="skip-link" href="#app-main">Skip to content</a>
+  <div class="grain" aria-hidden="true"></div>
+
+  <script src="../assets/js/core.js"></script>
+  <script src="../assets/js/match.js"></script>
+  <script src="../assets/js/seed.js"></script>
+  <script src="../assets/js/sim.js"></script>
+  <script src="../assets/js/ui.js"></script>
+  <script src="../assets/js/console.js"></script>
+  <script src="../assets/js/shell.js"></script>
+  <script>
+  (function () {
+    'use strict';
+    var dom = CB.dom, esc = CB.util.esc, f = CB.fmt, q = CB.q, ui = CB.ui, match = CB.match;
+    var profileId = CB.param('id');
+
+    var ctx = CB.shell.mount({
+      role: 'shipper', nav: 'transporters',
+      title: profileId ? 'Carrier profile' : 'Transporters',
+      live: false, render: renderShell
+    });
+    if (!ctx) return;
+
+    CB.on('change', function () { if (profileId) renderProfile(); else paint(); });
+
+    /* Delegated, bound once — survive the paint() innerHTML swap. */
+    dom.on(ctx.main, 'input', '#dir-q', paint);
+    dom.on(ctx.main, 'change', '#dir-verified,#dir-city,#dir-truck,#dir-sort', paint);
+
+    /* ==================================================================== */
+    function renderShell(ctx) {
+      if (profileId) { renderProfile(); return; }
+
+      var truckOpts = '<option value="">Any truck type</option>' +
+        CB.TRUCK_TYPES.map(function (t) { return '<option value="' + t.key + '">' + esc(t.label) + '</option>'; }).join('');
+
+      ctx.main.innerHTML =
+        '<div class="page-head"><div class="page-head-text">' +
+          '<h2>Transporters</h2><p class="t-lead">Verified carriers on CargoBid, ranked by the reliability score they have earned.</p>' +
+        '</div></div>' +
+
+        '<div class="toolbar">' +
+          '<div class="search toolbar-grow"><i class="ri-search-line"></i>' +
+            '<input id="dir-q" class="input" type="search" placeholder="Search by company, name or base city…" autocomplete="off"></div>' +
+          '<label class="row" style="gap:.4rem;cursor:pointer;white-space:nowrap">' +
+            '<input type="checkbox" id="dir-verified"><span class="t-small">Verified only</span></label>' +
+        '</div>' +
+
+        '<div class="form-grid" style="grid-template-columns:repeat(3,minmax(0,1fr));margin-top:.75rem">' +
+          '<div class="field"><label for="dir-city">Base city</label>' +
+            ui.citySelect('city', '', { id: 'dir-city', placeholder: 'Any city' }) + '</div>' +
+          '<div class="field"><label for="dir-truck">Truck type</label>' +
+            '<select class="select" id="dir-truck" name="truck">' + truckOpts + '</select></div>' +
+          '<div class="field"><label for="dir-sort">Sort by</label>' +
+            '<select class="select" id="dir-sort" name="sort">' +
+              '<option value="reliability">Reliability</option>' +
+              '<option value="rating">Rating</option>' +
+              '<option value="fleet">Fleet size</option>' +
+              '<option value="name">Company A–Z</option>' +
+            '</select></div>' +
+        '</div>' +
+
+        '<div id="dir-results" style="margin-top:var(--s-4)"></div>';
+      paint();
+    }
+
+    function filters() {
+      return {
+        query: (dom.$('#dir-q', ctx.main) || {}).value || '',
+        verifiedOnly: !!(dom.$('#dir-verified', ctx.main) || {}).checked,
+        city: (dom.$('#dir-city', ctx.main) || {}).value || '',
+        truckType: (dom.$('#dir-truck', ctx.main) || {}).value || '',
+        sort: (dom.$('#dir-sort', ctx.main) || {}).value || 'reliability'
+      };
+    }
+
+    function laneChips(t) {
+      return (t.truckTypes || []).map(function (k) {
+        var tt = CB.truckType(k);
+        return '<span class="chip chip-xs"><i class="' + tt.icon + '"></i>' + esc(tt.label) + '</span>';
+      }).join('');
+    }
+
+    function fleetTag(t) {
+      var n = t.fleetSize || 0;
+      if (n <= 1) return 'Owner-operator';
+      if (n <= 4) return 'Small fleet';
+      if (n <= 12) return 'Mid-size fleet';
+      return 'Large fleet operator';
+    }
+
+    function dirCard(c) {
+      var t = c.t;
+      var away = t.currentCity && t.currentCity !== t.homeBase;
+      return '<a class="card card-lift" href="transporters.html?id=' + c.id + '">' +
+        '<div class="row" style="gap:.75rem;align-items:flex-start;justify-content:space-between">' +
+          '<div class="row" style="gap:.75rem;align-items:center;min-width:0">' +
+            ui.avatar(c.name, c.id, 'lg') +
+            '<div style="min-width:0"><div class="row" style="gap:.4rem;align-items:center">' +
+              '<strong style="font-size:1.0625rem">' + esc(c.company) + '</strong>' + ui.verifiedBadge(c.verified, true) + '</div>' +
+              '<p class="t-small" style="margin-top:.15rem">' + esc(c.name) + ' · ' + fleetTag(t) + '</p>' +
+              '<p class="t-small"><i class="ri-map-pin-2-line"></i> ' + esc(t.homeBase) +
+                (away ? ' <span class="chip chip-xs chip-warn">now in ' + esc(t.currentCity) + '</span>' : '') + '</p>' +
+            '</div>' +
+          '</div>' +
+          ui.dial(c.reliability, { size: 68, caption: c.band.label }) +
+        '</div>' +
+        '<div class="row" style="gap:1.25rem;align-items:center;margin-top:.9rem">' +
+          '<div>' + f.stars(c.rating, 'sm') + ' <span class="t-small">' + (c.rating ? c.rating.toFixed(1) : 'New') + '</span></div>' +
+          '<span class="t-small"><i class="ri-caravan-line"></i> ' + c.fleetSize + ' truck' + (c.fleetSize === 1 ? '' : 's') + '</span>' +
+          '<span class="t-small"><i class="ri-checkbox-circle-line"></i> ' + (t.onTimeRate || 0) + '% on-time</span>' +
+        '</div>' +
+        '<div class="load-card-body" style="margin-top:.75rem">' + laneChips(t) + '</div>' +
+      '</a>';
+    }
+
+    function paint() {
+      var box = dom.$('#dir-results', ctx.main);
+      if (!box) return;
+      var fl = filters();
+      var rows = match.directory(fl);
+      box.innerHTML = rows.length
+        ? '<p class="t-small" style="margin-bottom:.75rem">' + rows.length + ' carrier' + (rows.length === 1 ? '' : 's') + '</p>' +
+          '<div class="cards cards-lg">' + rows.map(dirCard).join('') + '</div>'
+        : ui.empty('ri-search-eye-line', 'No carriers match',
+            'Loosen the filters — try removing the city or truck-type constraint.');
+    }
+
+    /* ================================================================== PROFILE */
+    function renderProfile() {
+      var c = q.transporterCard(profileId);
+      if (!c) {
+        ctx.setTitle('Carrier profile');
+        ctx.main.innerHTML =
+          '<nav class="breadcrumb"><a href="transporters.html">Transporters</a><i class="ri-arrow-right-s-line"></i><span>Not found</span></nav>' +
+          ui.empty('ri-error-warning-line', 'Carrier not found', 'No transporter with this id exists in this browser.',
+            '<a class="btn btn-outline" href="transporters.html"><i class="ri-arrow-left-line"></i>Back to directory</a>');
+        return;
+      }
+      var t = c.t, u = q.user(c.id);
+      var trucks = c.trucks || [];
+      var reviews = q.reviewsAbout(c.id);
+      var away = t.currentCity && t.currentCity !== t.homeBase;
+      ctx.setTitle(c.company);
+
+      var lastThread = q.threadsOf(ctx.user.id).filter(function (th) { return th.transporterId === c.id; })[0];
+      var msgHref = 'messages.html?t=' + c.id + (lastThread ? '&load=' + lastThread.loadId : '');
+
+      ctx.main.innerHTML =
+        '<nav class="breadcrumb"><a href="transporters.html">Transporters</a><i class="ri-arrow-right-s-line"></i>' +
+          '<span>' + esc(c.company) + '</span></nav>' +
+
+        '<div class="card" style="margin-bottom:var(--s-4)">' +
+          '<div class="row" style="gap:1.25rem;align-items:center;flex-wrap:wrap;justify-content:space-between">' +
+            '<div class="row" style="gap:1rem;align-items:center;min-width:0">' +
+              ui.avatar(c.name, c.id, 'xl') +
+              '<div style="min-width:0">' +
+                '<div class="row" style="gap:.5rem;align-items:center;flex-wrap:wrap">' +
+                  '<h2 style="font-size:1.4rem">' + esc(c.company) + '</h2>' + ui.verifiedBadge(c.verified) + '</div>' +
+                '<p class="t-lead" style="margin-top:.15rem">' + esc(c.name) + ' · ' + fleetTag(t) + '</p>' +
+                '<p class="t-small"><i class="ri-map-pin-2-line"></i> Based in ' + esc(t.homeBase) +
+                  (away ? ' · <span class="chip chip-xs chip-warn">currently in ' + esc(t.currentCity) + '</span>' : '') +
+                  ' · Member since ' + f.dateFull(t.memberSince) + '</p>' +
+              '</div>' +
+            '</div>' +
+            ui.dial(c.reliability, { size: 120, stroke: 10, caption: c.band.label }) +
+          '</div>' +
+          (t.blurb ? '<p class="t-small" style="margin-top:1rem;max-width:60ch">' + esc(t.blurb) + '</p>' : '') +
+          '<div class="stack-sm" style="margin-top:1rem;display:flex;flex-direction:row;gap:.5rem;flex-wrap:wrap">' +
+            '<a class="btn" href="' + msgHref + '"><i class="ri-chat-3-line"></i>Message ' + esc(c.name.split(' ')[0]) + '</a>' +
+            '<a class="btn btn-outline" href="post-load.html"><i class="ri-add-line"></i>Post a load</a>' +
+          '</div>' +
+        '</div>' +
+
+        '<div class="stat-grid">' +
+          ui.statTile({ icon: 'ri-star-line', value: c.rating ? c.rating.toFixed(1) : '—', label: 'Average rating', foot: t.ratings.count + ' review' + (t.ratings.count === 1 ? '' : 's') }) +
+          ui.statTile({ icon: 'ri-checkbox-circle-line', value: (t.onTimeRate || 0) + '%', label: 'On-time delivery', foot: t.onTimeDeliveries + ' of ' + t.deliveries + ' on time' }) +
+          ui.statTile({ icon: 'ri-caravan-line', value: c.fleetSize, label: 'Trucks in fleet', foot: (t.truckTypes || []).length + ' body type' + ((t.truckTypes || []).length === 1 ? '' : 's') }) +
+          ui.statTile({ icon: 'ri-award-line', value: CB.score.winRate(t) + '%', label: 'Bid win rate', foot: t.bidsWon + ' of ' + t.bidsPlaced + ' bids' }) +
+        '</div>' +
+
+        '<div class="split"><div class="section-block">' +
+          '<div class="card"><div class="block-head"><h3>Rating breakdown</h3>' +
+            '<span class="chip chip-xs ' + c.band.chip + '">' + c.band.label + '</span></div>' +
+            ratingBars(t) + '</div>' +
+          '<div class="section-block" style="margin-top:var(--s-4)"><div class="block-head"><h3>Reviews</h3>' +
+            '<span class="t-small">' + reviews.length + '</span></div>' + reviewList(reviews) + '</div>' +
+        '</div>' +
+        '<div class="split-aside">' +
+          '<div class="card"><h3 style="font-size:1rem;margin-bottom:.75rem">Compliance</h3>' +
+            ui.kv([
+              ['GST', ui.docChip(t.docs.gst)],
+              ['PAN', ui.docChip(t.docs.pan)],
+              ['Vehicle RC', ui.docChip(t.docs.rc)],
+              ['Hazmat licence', t.hazmatLicence ? '<span class="chip chip-xs chip-ok"><i class="ri-shield-check-line"></i>On file</span>' : '<span class="t-small">Not held</span>']
+            ]) + '</div>' +
+          '<div class="card"><div class="block-head"><h3 style="font-size:1rem">Fleet</h3>' +
+            '<span class="t-small">' + trucks.length + '</span></div>' + fleetList(trucks) + '</div>' +
+          '<div class="card"><h3 style="font-size:1rem;margin-bottom:.6rem">Operating lanes</h3>' +
+            '<div class="load-card-body">' + laneChips(t) + '</div>' +
+            '<p class="t-small" style="margin-top:.6rem"><i class="ri-focus-3-line"></i> Serves ~' + (t.radiusKm || 50) + ' km around ' + esc(t.currentCity || t.homeBase) + '.</p></div>' +
+        '</div></div>';
+    }
+
+    function ratingBars(t) {
+      var r = t.ratings;
+      function bar(label, v) {
+        var pct = Math.round((v / 5) * 100);
+        return '<div style="margin-bottom:.85rem"><div class="row-between" style="margin-bottom:.3rem">' +
+          '<span class="t-small" style="font-weight:600">' + label + '</span>' +
+          '<span class="t-num t-small">' + (v ? v.toFixed(1) : '—') + '</span></div>' +
+          ui.meter(pct, pct >= 90 ? 'ok' : (pct >= 75 ? null : 'warn')) + '</div>';
+      }
+      if (!r.count) return '<p class="t-small">No ratings yet. Scores appear once shippers review completed trips.</p>';
+      return bar('Punctuality', r.punctuality) + bar('Cargo safety', r.cargoSafety) + bar('Communication', r.communication);
+    }
+
+    function reviewList(reviews) {
+      if (!reviews.length) return '<div class="card"><p class="t-small">No written reviews yet.</p></div>';
+      return reviews.slice(0, 8).map(function (rv) {
+        var by = q.user(rv.byId);
+        var avg = Math.round(((rv.punctuality + rv.cargoSafety + rv.communication) / 3) * 10) / 10;
+        return '<div class="card" style="margin-bottom:.75rem"><div class="row-between">' +
+          '<div class="row" style="gap:.6rem;align-items:center">' + ui.avatar(by ? by.name : 'CargoBid', rv.byId, 'sm') +
+            '<div><div style="font-weight:600;font-size:.9375rem">' + esc(by ? by.company || by.name : 'Shipper') + '</div>' +
+            '<div class="t-small">' + f.day(rv.at) + '</div></div></div>' +
+          f.stars(avg, 'sm') + '</div>' +
+          (rv.comment ? '<p class="t-small" style="margin-top:.6rem">“' + esc(rv.comment) + '”</p>' : '') +
+        '</div>';
+      }).join('');
+    }
+
+    function fleetList(trucks) {
+      if (!trucks.length) return '<p class="t-small">No trucks listed.</p>';
+      var statusChip = {
+        idle: '<span class="chip chip-xs chip-ok">Available</span>',
+        'on-trip': '<span class="chip chip-xs chip-accent">On a trip</span>',
+        maintenance: '<span class="chip chip-xs chip-warn">In service</span>'
+      };
+      return trucks.slice(0, 8).map(function (tk) {
+        var tt = CB.truckType(tk.type);
+        return '<div class="row-between" style="padding:.5rem 0;border-bottom:1px solid var(--line)">' +
+          '<div class="row" style="gap:.55rem;align-items:center"><i class="' + tt.icon + '" style="color:var(--accent-deep)"></i>' +
+            '<div><div class="t-num" style="font-weight:600;font-size:.875rem">' + esc(tk.regNo) + '</div>' +
+            '<div class="t-small">' + esc(tt.label) + ' · ' + f.tons(tk.capacityTons) + '</div></div></div>' +
+          (statusChip[tk.status] || '') + '</div>';
+      }).join('');
+    }
+  }());
+  </script>
+</body>
+</html>

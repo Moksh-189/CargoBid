@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dashboard · CargoBid</title>
+  <meta name="theme-color" content="#F4F6FD">
+  <link rel="icon" href="../assets/img/logo.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300..700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.css" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/base.css">
+  <link rel="stylesheet" href="../assets/css/app.css">
+</head>
+<body>
+  <a class="skip-link" href="#app-main">Skip to content</a>
+  <div class="grain" aria-hidden="true"></div>
+
+  <script src="../assets/js/core.js"></script>
+  <script src="../assets/js/match.js"></script>
+  <script src="../assets/js/seed.js"></script>
+  <script src="../assets/js/sim.js"></script>
+  <script src="../assets/js/ui.js"></script>
+  <script src="../assets/js/console.js"></script>
+  <script src="../assets/js/shell.js"></script>
+  <script>
+  CB.shell.mount({
+    role: 'transporter',
+    nav: 'dashboard',
+    title: 'Dashboard',
+    live: true,
+    render: function (ctx) {
+      var me = ctx.user, esc = CB.util.esc, f = CB.fmt, q = CB.q, ui = CB.ui, match = CB.match;
+      var now = CB.clock.now();
+
+      var card = q.transporterCard(me.id);
+      var tp = q.transporter(me.id) || {};
+      var away = tp.currentCity && tp.currentCity !== tp.homeBase;
+
+      var myBids = q.bidsOf(me.id);
+      var liveBids = myBids.filter(function (b) {
+        var l = q.load(b.loadId);
+        return l && l.status === 'open' && b.status !== 'withdrawn' && b.status !== 'lost';
+      });
+      var leading = liveBids.filter(function (b) { return b.status === 'active'; }).length;
+
+      var trips = q.tripsOf(me.id);
+      var active = trips.filter(function (t) { return t.status !== 'delivered'; });
+      var delivered = trips.filter(function (t) { return t.status === 'delivered'; });
+      var won = trips.reduce(function (s, t) { return s + (t.amount || 0); }, 0);
+
+      var returns = safe(function () { return match.returnLoadsFor(me.id); }, []);
+      var board = safe(function () { return match.board(me.id); }, []);
+      var idle = q.idleTrucksOf(me.id);
+
+      function safe(fn, d) { try { var v = fn(); return v == null ? d : v; } catch (e) { return d; } }
+
+      /* counters the shipper sent me that are still awaiting my reply */
+      function pendingCounter(b) {
+        var c = b.counters && b.counters[b.counters.length - 1];
+        return (c && c.by === 'shipper' && c.state === 'pending') ? c : null;
+      }
+      var awaiting = liveBids.filter(pendingCounter);
+
+      var hour = new Date(now).getHours();
+      var greet = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+
+      /* -------- pieces -------- */
+      function myBidRow(b) {
+        var l = q.load(b.loadId); if (!l) return '';
+        var st = CB.BID_STATUS[b.status] || {};
+        var low = q.lowestBid(l.id);
+        var lead = b.status === 'active';
+        var sub = l.mode === 'blind'
+          ? 'sealed bid'
+          : (lead ? 'you are leading' : (low ? 'lowest ' + f.money(low.amount) : 'no rivals yet'));
+        return '<a class="row-between" style="padding:.7rem 0;border-bottom:1px solid var(--line)" href="load.html?id=' + l.id + '">' +
+          '<div style="min-width:0"><div style="font-weight:600">' + ui.route(l, true) + '</div>' +
+            '<p class="t-small"><span class="t-num" style="color:var(--ink)">' + f.money(b.amount) + '</span> · ' + esc(sub) +
+              ' · ' + ui.countdown(l.bidCloseAt, 'closes ') + '</p></div>' +
+          '<span class="chip chip-xs ' + (st.chip || 'chip') + '">' + esc(st.label || b.status) + '</span></a>';
+      }
+
+      function boardCard(row) {
+        var l = row.load, tt = CB.truckType(l.need.truckType);
+        var band = match.fitBand(row.fit.score);
+        var bh = row.fit.backhaul;
+        return '<a class="card card-lift" href="load.html?id=' + l.id + '">' +
+          '<div class="load-card">' +
+            '<div class="load-card-top">' +
+              '<div><div class="load-card-route">' + ui.route(l) + '</div>' +
+                '<p class="t-small" style="margin-top:.25rem">' + esc(l.material.name) + ' · ' + f.tons(l.material.weightTons) + '</p></div>' +
+              '<span class="chip chip-xs ' + band.chip + '"><i class="ri-focus-3-line"></i>' + esc(band.label) + '</span>' +
+            '</div>' +
+            '<div class="load-card-body">' +
+              '<span class="chip chip-xs"><i class="' + tt.icon + '"></i>' + esc(tt.label) + '</span>' +
+              '<span class="chip chip-xs"><i class="ri-route-line"></i>' + f.km(l.distanceKm) + '</span>' +
+              (bh && bh.is ? '<span class="chip chip-xs chip-ok"><i class="ri-arrow-go-back-line"></i>' + bh.coverage + '% backhaul</span>' : '') +
+            '</div>' +
+            '<div class="load-card-foot">' +
+              '<span>' + (row.myBid
+                ? '<span class="chip chip-xs chip-accent"><i class="ri-price-tag-3-line"></i>You bid ' + f.money(row.myBid.amount) + '</span>'
+                : (l.mode === 'blind'
+                    ? '<span class="chip chip-xs chip-accent"><i class="ri-eye-off-line"></i>Sealed</span>'
+                    : (row.lowest ? '<strong class="t-num">' + f.money(row.lowest.amount) + '</strong> <span class="t-small">lowest</span>' : '<span class="t-small">No bids yet</span>'))) +
+              '</span>' + ui.countdown(l.bidCloseAt, 'Closes ') +
+            '</div>' +
+          '</div></a>';
+      }
+
+      var topBoard = board.slice(0, 4);
+
+      /* -------- needs-action list -------- */
+      function actionRow(href, tone, icon, title, sub) {
+        var wash = tone === 'warn' ? 'var(--warn-wash)' : 'var(--accent-wash)';
+        var col = tone === 'warn' ? 'var(--warn)' : 'var(--accent-deep)';
+        return '<a class="row-between" style="padding:.7rem 0;border-bottom:1px solid var(--line)" href="' + href + '">' +
+          '<div class="row" style="gap:.6rem;align-items:center;min-width:0">' +
+            '<span style="width:2rem;height:2rem;border-radius:var(--r-tight);display:inline-grid;place-items:center;flex:0 0 auto;background:' + wash + ';color:' + col + '"><i class="' + icon + '"></i></span>' +
+            '<div style="min-width:0"><div style="font-weight:600">' + title + '</div>' +
+            '<p class="t-small">' + sub + '</p></div></div>' +
+          '<i class="ri-arrow-right-s-line" style="color:var(--ink-3)"></i></a>';
+      }
+      var actions = [];
+      awaiting.forEach(function (b) {
+        var l = q.load(b.loadId); if (!l) return;
+        var c = pendingCounter(b);
+        actions.push(actionRow('load.html?id=' + l.id, 'warn', 'ri-arrow-left-right-line',
+          'Counter of ' + f.money(c.amount), esc(l.origin.city + ' → ' + l.destination.city) + ' · reply to keep it alive'));
+      });
+      active.forEach(function (t) {
+        var l = q.load(t.loadId); if (!l) return;
+        var nx = t.checkpoints.filter(function (c) { return !c.done; })[0];
+        actions.push(actionRow('trips.html?id=' + t.id, 'accent', 'ri-truck-line',
+          esc(nx ? nx.label : 'In transit'), esc(l.origin.city + ' → ' + l.destination.city) + ' · update the checkpoint'));
+      });
+
+      /* -------- render -------- */
+      ctx.main.innerHTML =
+        '<div class="page-head"><div class="page-head-text">' +
+          '<h2>' + greet + ', ' + esc(me.name.split(' ')[0]) + '</h2>' +
+          '<p class="t-lead">Loads that fit your fleet, and the bids you have in the running.</p>' +
+        '</div><div class="page-actions">' +
+          '<a class="btn btn-outline" href="return-loads.html"><i class="ri-arrow-go-back-line"></i>Return loads</a>' +
+          '<a class="btn" href="marketplace.html"><i class="ri-search-line"></i>Find loads</a>' +
+        '</div></div>' +
+
+        (away && returns.length
+          ? '<div class="notice notice-info" style="margin-bottom:var(--s-4)"><i class="ri-arrow-go-back-line"></i>' +
+            '<div><strong>Your fleet is in ' + esc(tp.currentCity) + ', away from ' + esc(tp.homeBase) + '.</strong> ' +
+            returns.length + ' load' + (returns.length === 1 ? '' : 's') + ' head back toward home — bidding one turns the empty return leg into paid kilometres. ' +
+            '<a href="return-loads.html" style="font-weight:600">See return loads →</a></div></div>'
+          : '') +
+
+        '<div class="stat-grid">' +
+          ui.statTile({ icon: 'ri-auction-line', value: liveBids.length, label: 'Live bids', foot: leading ? '<span style="color:var(--ok)">' + leading + ' leading now</span>' : 'none leading yet' }) +
+          ui.statTile({ icon: 'ri-truck-line', value: active.length, label: 'Trips in transit', foot: delivered.length + ' delivered all-time' }) +
+          ui.statTile({ icon: 'ri-caravan-line', value: idle.length + '/' + card.fleetSize, label: 'Trucks idle', foot: idle.length ? 'ready to load' : 'fully deployed' }) +
+          ui.statTile({ icon: 'ri-scales-3-line', value: f.moneyShort(won), label: 'Freight won', foot: 'across ' + trips.length + ' trips' }) +
+        '</div>' +
+
+        '<div class="split">' +
+          '<div class="section-block">' +
+            (liveBids.length
+              ? '<div class="card"><div class="block-head"><h3 style="font-size:1rem">Your live bids</h3>' +
+                  '<a class="btn-quiet btn-sm" href="bids.html">All bids <i class="ri-arrow-right-line"></i></a></div>' +
+                  liveBids.slice(0, 5).map(myBidRow).join('') + '</div>'
+              : '') +
+            '<div class="block-head"' + (liveBids.length ? ' style="margin-top:var(--s-4)"' : '') + '><h3>Recommended for you</h3>' +
+              (topBoard.length ? '<a class="btn-quiet btn-sm" href="marketplace.html">Marketplace <i class="ri-arrow-right-line"></i></a>' : '') + '</div>' +
+            (topBoard.length
+              ? '<div class="cards">' + topBoard.map(boardCard).join('') + '</div>'
+              : '<div class="empty"><i class="ri-compass-3-line"></i><h3 class="t-h4">No loads in range right now</h3>' +
+                '<p class="t-small">Widen your service radius from the city chip up top, or browse every open load.</p>' +
+                '<a class="btn" href="marketplace.html"><i class="ri-search-line"></i>Browse all loads</a></div>') +
+          '</div>' +
+
+          '<div class="split-aside">' +
+            '<div class="card">' +
+              '<div class="row" style="gap:1rem;align-items:center;justify-content:space-between">' +
+                '<div style="min-width:0"><div class="row" style="gap:.4rem;align-items:center;flex-wrap:wrap">' +
+                  '<h3 style="font-size:1rem">Your reliability</h3>' + ui.verifiedBadge(card.verified, true) + '</div>' +
+                  '<div style="margin-top:.4rem">' + f.stars(card.rating) + '</div>' +
+                  '<p class="t-small" style="margin-top:.3rem">' + (card.rating ? card.rating.toFixed(1) + ' / 5' : 'No ratings yet') + ' · ' + (tp.deliveries || 0) + ' deliveries</p></div>' +
+                ui.dial(card.reliability, { size: 96, caption: card.band.label }) +
+              '</div>' +
+              '<div class="row-between" style="margin-top:1rem;border-top:1px solid var(--line);padding-top:.8rem">' +
+                '<span class="t-small">Bid win rate</span><strong class="t-num">' + CB.score.winRate(tp) + '%</strong></div>' +
+              '<p class="t-small" style="margin-top:.3rem">' + (tp.bidsWon || 0) + ' of ' + (tp.bidsPlaced || 0) + ' bids won · ' + (tp.onTimeRate || 0) + '% on-time</p>' +
+              (!card.verified ? '<a class="btn btn-outline btn-block" href="fleet.html" style="margin-top:.85rem"><i class="ri-verified-badge-line"></i>Complete verification</a>' : '') +
+            '</div>' +
+
+            (actions.length
+              ? '<div class="card"><div class="block-head"><h3 style="font-size:1rem">Needs your attention</h3>' +
+                  '<span class="chip chip-xs chip-warn">' + actions.length + '</span></div>' + actions.join('') + '</div>'
+              : '') +
+
+            '<div class="card"><h3 style="font-size:1rem;margin-bottom:.75rem">Quick actions</h3>' +
+              '<div class="stack-sm">' +
+                '<a class="btn btn-outline btn-block" href="marketplace.html"><i class="ri-search-line"></i>Find loads</a>' +
+                '<a class="btn btn-outline btn-block" href="return-loads.html"><i class="ri-arrow-go-back-line"></i>Return loads</a>' +
+                '<a class="btn btn-outline btn-block" href="fleet.html"><i class="ri-caravan-line"></i>Manage fleet</a>' +
+                '<a class="btn btn-outline btn-block" href="messages.html"><i class="ri-chat-3-line"></i>Messages</a>' +
+              '</div></div>' +
+          '</div>' +
+        '</div>';
+
+      ui.startCountdowns();
+    }
+  });
+  </script>
+</body>
+</html>

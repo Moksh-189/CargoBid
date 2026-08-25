@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" role="img" aria-labelledby="tCrates"><title id="tCrates">Palletised freight crates</title>
+<g stroke="#14161C" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">
+  <ellipse cx="200" cy="372" rx="150" ry="26" fill="#8DB0F4" opacity="0.18" stroke="none"/>
+
+  <!-- wooden pallet : top slab + front thickness faces -->
+  <path d="M200 256 L320 300 L200 344 L80 300 Z" fill="#3D4354"/>
+  <path d="M320 300 L320 316 L200 360 L200 344 Z" fill="#2A2F3D"/>
+  <path d="M80 300 L80 316 L200 360 L200 344 Z" fill="#2A2F3D"/>
+  <path d="M110 284 L230 328" opacity="0.45"/>
+  <path d="M170 260 L290 304" opacity="0.45"/>
+  <path d="M140 331 L140 347" opacity="0.45"/>
+  <path d="M200 344 L200 360" opacity="0.45"/>
+  <path d="M260 331 L260 347" opacity="0.45"/>
+
+  <!-- crate A : blue, left-mid -->
+  <path d="M160 226 L200 250 L160 274 L120 250 Z" fill="#B9CFF9"/>
+  <path d="M200 250 L200 294 L160 318 L160 274 Z" fill="#8DB0F4"/>
+  <path d="M120 250 L120 294 L160 318 L160 274 Z" fill="#6D97E8"/>
+  <path d="M160 282 L200 258" opacity="0.45"/>
+  <path d="M120 258 L160 282" opacity="0.45"/>
+
+  <!-- crate C : yellow, stacked on A -->
+  <path d="M160 176 L194 196 L160 216 L126 196 Z" fill="#F7D46B"/>
+  <path d="M194 196 L194 234 L160 254 L160 216 Z" fill="#F5C544"/>
+  <path d="M126 196 L126 234 L160 254 L160 216 Z" fill="#DFA92C"/>
+  <path d="M160 224 L194 204" opacity="0.45"/>
+  <path d="M126 204 L160 224" opacity="0.45"/>
+
+  <!-- crate B : yellow, right-mid -->
+  <path d="M252 240 L292 264 L252 288 L212 264 Z" fill="#F7D46B"/>
+  <path d="M292 264 L292 308 L252 332 L252 288 Z" fill="#F5C544"/>
+  <path d="M212 264 L212 308 L252 332 L252 288 Z" fill="#DFA92C"/>
+  <path d="M252 296 L292 272" opacity="0.45"/>
+  <path d="M212 272 L252 296" opacity="0.45"/>
+
+  <!-- crate E : blue, stacked on B -->
+  <path d="M256 208 L286 226 L256 244 L226 226 Z" fill="#B9CFF9"/>
+  <path d="M286 226 L286 258 L256 276 L256 244 Z" fill="#8DB0F4"/>
+  <path d="M226 226 L226 258 L256 276 L256 244 Z" fill="#6D97E8"/>
+  <path d="M256 250 L286 232" opacity="0.45"/>
+  <path d="M226 232 L256 250" opacity="0.45"/>
+
+  <!-- crate D : blue, front-centre (nearest) -->
+  <path d="M200 268 L234 288 L200 308 L166 288 Z" fill="#B9CFF9"/>
+  <path d="M234 288 L234 322 L200 342 L200 308 Z" fill="#8DB0F4"/>
+  <path d="M166 288 L166 322 L200 342 L200 308 Z" fill="#6D97E8"/>
+  <path d="M200 316 L234 296" opacity="0.45"/>
+  <path d="M166 296 L200 316" opacity="0.45"/>
+</g>
+</svg>

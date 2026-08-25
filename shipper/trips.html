@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Trips · CargoBid</title>
+  <meta name="theme-color" content="#F4F6FD">
+  <link rel="icon" href="../assets/img/logo.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300..700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.css" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/base.css">
+  <link rel="stylesheet" href="../assets/css/app.css">
+</head>
+<body>
+  <a class="skip-link" href="#app-main">Skip to content</a>
+  <div class="grain" aria-hidden="true"></div>
+
+  <script src="../assets/js/core.js"></script>
+  <script src="../assets/js/match.js"></script>
+  <script src="../assets/js/seed.js"></script>
+  <script src="../assets/js/sim.js"></script>
+  <script src="../assets/js/ui.js"></script>
+  <script src="../assets/js/console.js"></script>
+  <script src="../assets/js/shell.js"></script>
+  <script>
+  (function () {
+    'use strict';
+    var dom = CB.dom, esc = CB.util.esc, f = CB.fmt, q = CB.q, ui = CB.ui, act = CB.act;
+    var tripId = CB.param('id');
+    var filter = 'all';
+
+    var ctx = CB.shell.mount({
+      role: 'shipper', nav: 'trips',
+      title: tripId ? 'Trip' : 'Trips',
+      live: true, render: render
+    });
+    if (!ctx) return;
+
+    /* Delegated handlers bound once on the stable <main>; they survive the
+       innerHTML replacement that live re-render does on every data change. */
+    dom.on(ctx.main, 'click', '[data-filter]', function () {
+      filter = this.getAttribute('data-filter');
+      ctx.refresh();
+    });
+    dom.on(ctx.main, 'click', '[data-review]', function () {
+      openReview(this.getAttribute('data-review'));
+    });
+
+    function render(ctx) {
+      if (tripId) renderDetail(ctx);
+      else renderList(ctx);
+    }
+
+    function progressPct(t) {
+      var done = t.checkpoints.filter(function (c) { return c.done; }).length;
+      return Math.round(done / t.checkpoints.length * 100);
+    }
+    function doneCount(t) { return t.checkpoints.filter(function (c) { return c.done; }).length; }
+    function nextStep(t) { return t.checkpoints.filter(function (c) { return !c.done; })[0]; }
+
+    /* ==================================================================== LIST */
+    var TABS = [
+      { key: 'all', label: 'All' },
+      { key: 'active', label: 'In transit' },
+      { key: 'delivered', label: 'Delivered' }
+    ];
+    function inTab(t, key) {
+      if (key === 'active') return t.status !== 'delivered';
+      if (key === 'delivered') return t.status === 'delivered';
+      return true;
+    }
+
+    function tripCard(t) {
+      var l = q.load(t.loadId);
+      if (!l) return '';
+      var c = q.transporterCard(t.transporterId);
+      var delivered = t.status === 'delivered';
+      var nx = nextStep(t);
+      var foot = delivered
+        ? '<span class="chip chip-xs chip-ok"><i class="ri-check-double-line"></i>Delivered ' + f.day(t.deliveredAt) + '</span>'
+        : '<span class="t-small">Next · ' + esc(nx ? nx.label : '—') + '</span>' + ui.countdown(l.deliverBy, 'Due in ');
+      return '<a class="card card-lift" href="trips.html?id=' + t.id + '">' +
+        '<div class="load-card">' +
+          '<div class="load-card-top">' +
+            '<div><div class="load-card-route">' + ui.route(l) + '</div>' +
+              '<p class="t-small" style="margin-top:.25rem">' + esc(l.material.name) + ' · ' + f.tons(l.material.weightTons) + '</p></div>' +
+            ui.statusChip(l.status) +
+          '</div>' +
+          '<div class="row" style="gap:.5rem;align-items:center;margin:.15rem 0 .1rem">' +
+            (c ? ui.avatar(c.name, c.id, 'sm') +
+              '<span class="t-small" style="font-weight:600">' + esc(c.company) + '</span>' +
+              ui.verifiedBadge(c.verified, true) : '') +
+          '</div>' +
+          ui.meter(progressPct(t), delivered ? 'ok' : null) +
+          '<div class="load-card-foot"><span class="t-small">' + doneCount(t) + '/' + t.checkpoints.length +
+            ' · <span class="t-num" style="color:var(--ink)">' + f.money(t.amount) + '</span></span>' + foot + '</div>' +
+        '</div></a>';
+    }
+
+    function renderList(ctx) {
+      ctx.setTitle('Trips');
+      var trips = q.tripsForShipper(ctx.user.id);
+      var rows = trips.filter(function (t) { return inTab(t, filter); });
+      var counts = {};
+      TABS.forEach(function (tab) { counts[tab.key] = trips.filter(function (t) { return inTab(t, tab.key); }).length; });
+
+      ctx.main.innerHTML =
+        '<div class="page-head"><div class="page-head-text">' +
+          '<h2>Trips</h2><p class="t-lead">Every load you have awarded, tracked from pickup to proof of delivery.</p>' +
+        '</div></div>' +
+        (trips.length
+          ? '<div class="toolbar"><div class="segment" role="tablist" style="width:auto">' +
+              TABS.map(function (tab) {
+                return '<button data-filter="' + tab.key + '" aria-selected="' + (tab.key === filter) + '">' +
+                  esc(tab.label) + ' <span class="tab-count t-num">' + counts[tab.key] + '</span></button>';
+              }).join('') +
+            '</div></div>' +
+            (rows.length
+              ? '<div class="cards" style="margin-top:var(--s-4)">' + rows.map(tripCard).join('') + '</div>'
+              : ui.empty('ri-inbox-line', 'Nothing in this view', 'No trips match this filter yet.'))
+          : ui.empty('ri-truck-line', 'No trips yet',
+              'When you award a load, the booking lands here and you can follow it all the way to the signed POD.',
+              '<a class="btn" href="loads.html"><i class="ri-stack-line"></i>Go to my loads</a>'));
+      ui.startCountdowns();
+    }
+
+    /* ================================================================== DETAIL */
+    function notFound(title, body) {
+      ctx.setTitle('Trip');
+      ctx.main.innerHTML =
+        '<nav class="breadcrumb"><a href="trips.html">Trips</a><i class="ri-arrow-right-s-line"></i><span>Not found</span></nav>' +
+        ui.empty('ri-error-warning-line', title, body,
+          '<a class="btn btn-outline" href="trips.html"><i class="ri-arrow-left-line"></i>Back to trips</a>');
+    }
+
+    function renderDetail(ctx) {
+      var me = ctx.user;
+      var t = q.trip(tripId);
+      if (!t) { notFound('Trip not found', 'This trip does not exist in this browser.'); return; }
+      var l = q.load(t.loadId);
+      if (!l || l.shipperId !== me.id) { notFound('Not your trip', 'You can only track trips for loads you posted.'); return; }
+
+      ctx.setTitle(l.origin.city + ' → ' + l.destination.city);
+      var c = q.transporterCard(t.transporterId);
+      var truck = t.truckId ? q.truck(t.truckId) : null;
+      var tt = CB.truckType(l.need.truckType);
+      var delivered = t.status === 'delivered';
+      var review = q.reviewFor(t.id, me.id);
+
+      ctx.main.innerHTML =
+        '<nav class="breadcrumb"><a href="trips.html">Trips</a><i class="ri-arrow-right-s-line"></i>' +
+          '<span>' + esc(l.origin.city) + ' → ' + esc(l.destination.city) + '</span></nav>' +
+
+        '<div class="page-head"><div class="page-head-text">' +
+          '<div class="load-card-route" style="font-size:1.4rem;font-weight:650">' + ui.route(l) + '</div>' +
+          '<p class="t-lead">' + esc(l.material.name) + ' · ' + f.tons(l.material.weightTons) + ' · ' + esc(tt.label) +
+            ' · <span class="t-num">' + t.id + '</span></p>' +
+        '</div><div class="page-actions">' + ui.statusChip(l.status) + '</div></div>' +
+
+        '<div class="split"><div class="section-block">' +
+          banner(t, l, delivered, review) +
+          '<div class="card"><div class="block-head"><h3>Journey</h3>' +
+            '<span class="t-small">' + doneCount(t) + ' of ' + t.checkpoints.length + ' steps</span></div>' +
+            ui.timeline(t.checkpoints) + '</div>' +
+          (delivered ? reviewCard(t, review) : futureReviewNote()) +
+        '</div>' +
+
+        '<div class="split-aside">' +
+          carrierCard(c, l.id) +
+          consignmentCard(t, l, truck, tt) +
+          (delivered && t.podUrl ? podCard(t) : '') +
+        '</div></div>';
+
+      ui.startCountdowns();
+    }
+
+    function banner(t, l, delivered, review) {
+      if (delivered) {
+        return '<div class="notice notice-ok" style="margin-bottom:var(--s-4)"><i class="ri-check-double-line"></i>' +
+          '<div><strong>Delivered · ' + f.datetime(t.deliveredAt) + '</strong><br>' +
+          'Proof of delivery is on file against LR ' + esc(t.lrNumber) + '.' +
+          (review ? ' Thanks for rating the carrier.' : ' Rate the carrier below — it keeps reliability scores honest.') +
+          '</div></div>';
+      }
+      var nx = nextStep(t);
+      return '<div class="notice notice-info" style="margin-bottom:var(--s-4)"><i class="ri-truck-line"></i>' +
+        '<div><strong>' + esc(nx ? nx.label : 'On the corridor') + '</strong><br>' +
+        'Delivery window closes ' + ui.countdown(l.deliverBy, '') + ' · ' + f.datetime(l.deliverBy) + '.</div></div>';
+    }
+
+    function carrierCard(c, loadId) {
+      if (!c) return '';
+      return '<div class="card">' +
+        '<div class="row" style="gap:.75rem;align-items:center">' +
+          ui.avatar(c.name, c.id) +
+          '<div style="min-width:0"><div style="font-weight:600">' + esc(c.name) + '</div>' +
+            '<div class="t-small">' + esc(c.company) + ' · ' + esc(c.city) + '</div></div>' +
+        '</div>' +
+        '<div class="row" style="justify-content:space-between;align-items:center;gap:1rem;margin-top:1rem">' +
+          ui.dial(c.reliability, { size: 78, caption: c.band.label }) +
+          '<div style="text-align:right">' +
+            '<div>' + f.stars(c.rating) + '</div>' +
+            '<div class="t-small" style="margin-top:.35rem">' +
+              (c.rating ? c.rating.toFixed(1) + ' / 5 · ' : 'No ratings yet · ') +
+              c.fleetSize + ' truck' + (c.fleetSize === 1 ? '' : 's') + '</div>' +
+            '<div style="margin-top:.4rem">' + ui.verifiedBadge(c.verified, true) + '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="stack-sm" style="margin-top:1rem">' +
+          '<a class="btn btn-outline btn-block" href="messages.html?load=' + loadId + '&t=' + c.id + '"><i class="ri-chat-3-line"></i>Message carrier</a>' +
+          '<a class="btn btn-quiet btn-block" href="transporters.html?id=' + c.id + '"><i class="ri-profile-line"></i>View profile</a>' +
+        '</div></div>';
+    }
+
+    function consignmentCard(t, l, truck, tt) {
+      var tel = (t.driver.phone || '').replace(/\s+/g, '');
+      return '<div class="card"><h3 style="font-size:1rem;margin-bottom:.75rem">Consignment</h3>' +
+        ui.kv([
+          ['LR number', '<span class="t-num">' + esc(t.lrNumber) + '</span>'],
+          ['Vehicle', truck
+            ? '<span class="t-num">' + esc(truck.regNo) + '</span> <span class="t-small">· ' + esc(tt.label) + ' · ' + f.tons(truck.capacityTons) + '</span>'
+            : esc(tt.label)],
+          ['Driver', esc(t.driver.name) + ' · <a href="tel:' + esc(tel) + '" class="t-num">' + esc(t.driver.phone) + '</a>'],
+          ['Route', f.km(l.distanceKm) + ' by road'],
+          ['Freight value', '<span class="t-num" style="font-weight:600">' + f.money(t.amount) + '</span> <span class="t-small">· ' + f.perKm(t.amount, l.distanceKm) + '</span>'],
+          ['Booked', f.datetime(t.createdAt)]
+        ]) + '</div>';
+    }
+
+    function podCard(t) {
+      return '<div class="card"><h3 style="font-size:1rem;margin-bottom:.75rem">Proof of delivery</h3>' +
+        '<div class="pod"><i class="ri-file-shield-2-line"></i>' +
+          '<div style="min-width:0"><div style="font-weight:600">POD signed &amp; captured</div>' +
+            '<div class="t-small t-num" style="word-break:break-all">' + esc(t.podUrl) + '</div>' +
+            '<div class="t-small">' + f.datetime(t.deliveredAt) + '</div></div>' +
+        '</div>' +
+        '<p class="t-small" style="margin-top:.6rem;color:var(--ink-3)"><i class="ri-information-line"></i> Demo — the scanned document is simulated.</p>' +
+        '</div>';
+    }
+
+    function reviewCard(t, review) {
+      if (review) {
+        return '<div class="card card-accent"><div class="block-head"><h3>Your rating</h3>' +
+          '<span class="t-small">' + f.day(review.at) + '</span></div>' +
+          ui.kv([
+            ['Punctuality', f.stars(review.punctuality)],
+            ['Cargo safety', f.stars(review.cargoSafety)],
+            ['Communication', f.stars(review.communication)]
+          ]) +
+          (review.comment ? '<p class="t-small" style="margin-top:.75rem;font-style:italic">“' + esc(review.comment) + '”</p>' : '') +
+        '</div>';
+      }
+      return '<div class="card"><div class="block-head"><h3>Rate this carrier</h3></div>' +
+        '<p class="t-small">Score punctuality, cargo safety and communication. Your rating updates the carrier\'s public reliability score.</p>' +
+        '<button type="button" class="btn" data-review="' + t.id + '" style="margin-top:1rem"><i class="ri-star-line"></i>Leave a rating</button>' +
+        '</div>';
+    }
+
+    function futureReviewNote() {
+      return '<div class="card"><div class="row" style="gap:.6rem;color:var(--ink-2)">' +
+        '<i class="ri-star-half-line" style="font-size:1.25rem"></i>' +
+        '<p class="t-small" style="margin:0">You can rate the carrier once this trip is delivered and the POD is in.</p>' +
+        '</div></div>';
+    }
+
+    /* ---- review modal (lives outside <main>, so live re-render is harmless) */
+    function openReview(id) {
+      var t = q.trip(id);
+      if (!t) return;
+      if (q.reviewFor(t.id, ctx.user.id)) { CB.toast('You have already rated this trip', 'info'); return; }
+      var c = q.transporterCard(t.transporterId);
+
+      var m = ui.modal({
+        eyebrow: 'Trip ' + t.id,
+        title: 'Rate ' + (c ? c.company : 'the carrier'),
+        subtitle: 'Score the three things that matter. This feeds the public reliability score.',
+        size: 'sm',
+        body:
+          '<form id="rv-form" class="stack-sm" novalidate>' +
+            ui.starInput('punctuality', 0, 'Punctuality') +
+            ui.starInput('cargoSafety', 0, 'Cargo safety') +
+            ui.starInput('communication', 0, 'Communication') +
+            '<div class="field" style="margin-top:.35rem"><label for="rv-comment">Comment <span class="t-small">· optional</span></label>' +
+              '<textarea id="rv-comment" name="comment" class="input" rows="3" maxlength="280" placeholder="How were pickup, transit and handover?"></textarea></div>' +
+            '<p class="field-error" id="rv-err" hidden></p>' +
+          '</form>',
+        actions: [
+          { label: 'Cancel', className: 'btn-outline', onClick: function (mo) { mo.close(); } },
+          { label: 'Submit rating', icon: 'ri-star-fill', onClick: doSubmit }
+        ],
+        onMount: function (mo) { ui.bindStars(dom.$('#rv-form', mo.el)); }
+      });
+
+      function doSubmit(mo) {
+        var form = dom.$('#rv-form', mo.el);
+        var d = ui.serialize(form);
+        var p = Number(d.punctuality), s = Number(d.cargoSafety), cm = Number(d.communication);
+        var err = dom.$('#rv-err', mo.el);
+        if (!(p >= 1 && s >= 1 && cm >= 1)) {
+          err.hidden = false;
+          err.innerHTML = '<i class="ri-error-warning-line"></i>Please rate all three areas.';
+          return;
+        }
+        mo.setBusy(true);
+        var r = act.submitReview({
+          tripId: t.id, byId: ctx.user.id,
+          punctuality: p, cargoSafety: s, communication: cm,
+          comment: (d.comment || '').trim()
+        });
+        if (!r || r.error) {
+          mo.setBusy(false);
+          err.hidden = false;
+          err.innerHTML = '<i class="ri-error-warning-line"></i>' + esc((r && r.error) || 'Could not save the rating.');
+          return;
+        }
+        mo.close();
+        CB.toast('Rating saved · ' + (c ? esc(c.company) : 'carrier') + ' reliability updated', 'star');
+        ctx.refresh();
+      }
+    }
+  }());
+  </script>
+</body>
+</html>

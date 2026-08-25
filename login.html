@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sign in · CargoBid</title>
+  <meta name="description" content="Sign in to CargoBid. Pick a demo shipper or transporter account — no password needed.">
+  <meta name="theme-color" content="#8DB0F4">
+  <link rel="icon" href="assets/img/logo.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300..700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.css" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/base.css">
+  <link rel="stylesheet" href="assets/css/app.css">
+</head>
+<body>
+  <a class="skip-link" href="#auth-main">Skip to content</a>
+  <div class="grain" aria-hidden="true"></div>
+
+  <div class="auth">
+    <aside class="auth-aside">
+      <div id="brand"></div>
+
+      <div class="auth-hero">
+        <p class="t-eyebrow" style="color:var(--accent-soft)">B2B heavy freight, matched</p>
+        <h1>The load board that closes the loop.</h1>
+        <p>Post a lorry-load, watch verified carriers bid it down in real time, and award on price or on trust — not on phone calls.</p>
+        <div class="auth-points" style="margin-top:2rem">
+          <span class="auth-point"><i class="ri-auction-line"></i>Live reverse auctions on every corridor</span>
+          <span class="auth-point"><i class="ri-shield-check-line"></i>Reliability scores from real delivery history</span>
+          <span class="auth-point"><i class="ri-arrow-go-back-line"></i>Backhaul matching that kills empty runs</span>
+        </div>
+      </div>
+
+      <p class="t-small" style="color:rgba(255,255,255,.55)">A self-contained demo. All data lives in your browser.</p>
+      <img class="auth-art" src="assets/img/truck-container.svg" alt="" aria-hidden="true">
+    </aside>
+
+    <main class="auth-main" id="auth-main">
+      <div class="auth-inner">
+        <div id="need-notice"></div>
+        <p class="t-eyebrow">Sign in</p>
+        <h2 class="t-h2">Choose a demo account</h2>
+        <p class="t-body" style="margin-top:.5rem">No password, no sign-up. Pick a role, then a persona — you can switch anytime from the demo console.</p>
+
+        <div class="segment role-seg" id="role-seg" role="tablist" aria-label="Choose a role">
+          <button type="button" data-value="shipper" aria-selected="true"><i class="ri-inbox-archive-line"></i>&nbsp;I ship freight</button>
+          <button type="button" data-value="transporter" aria-selected="false"><i class="ri-truck-line"></i>&nbsp;I move freight</button>
+        </div>
+
+        <div class="account-list" id="accounts" aria-live="polite"></div>
+
+        <p class="t-small" style="margin-top:1.5rem">
+          <a href="index.html" style="color:var(--accent-deep);font-weight:550">← Back to the marketing site</a>
+        </p>
+      </div>
+    </main>
+  </div>
+
+  <script src="assets/js/core.js"></script>
+  <script src="assets/js/match.js"></script>
+  <script src="assets/js/seed.js"></script>
+  <script src="assets/js/sim.js"></script>
+  <script src="assets/js/ui.js"></script>
+  <script src="assets/js/console.js"></script>
+  <script>
+  (function () {
+    'use strict';
+    CB.boot();
+    var dom = CB.dom, esc = CB.util.esc;
+
+    document.getElementById('brand').innerHTML = CB.ui.logo('index.html');
+
+    var need = CB.param('need');
+    var next = CB.param('next');
+    var role = (need === 'transporter' || need === 'shipper') ? need : 'shipper';
+
+    if (need) {
+      document.getElementById('need-notice').innerHTML =
+        '<div class="notice notice-info" style="margin-bottom:1.5rem"><i class="ri-lock-2-line"></i>' +
+        '<div>That page is for <strong>' + esc(need) + 's</strong>. Pick a ' + esc(need) + ' account below to continue.</div></div>';
+    }
+
+    var accountsEl = document.getElementById('accounts');
+
+    function card(a) {
+      var ex = a.ex || {};
+      var sub = [a.company, a.city].filter(Boolean).join(' · ');
+      return '<button type="button" class="account' + (ex.featured ? ' is-featured' : '') + '" data-id="' + a.id + '">' +
+        CB.ui.avatar(a.name, a.id, 'lg') +
+        '<span class="account-meta">' +
+          '<span class="account-name">' + esc(a.name) +
+            (ex.verified ? ' ' + CB.ui.verifiedBadge(true, true) : '') + '</span>' +
+          '<span class="account-sub">' + esc(sub) + '</span>' +
+          (ex.blurb ? '<span class="account-sub" style="color:var(--ink-3)">' + esc(ex.blurb) + '</span>' : '') +
+        '</span>' +
+        (ex.featured ? '<span class="account-tag">Start here</span>' :
+          (ex.stranded ? '<span class="account-tag" style="background:var(--warn-wash);color:var(--warn)">Backhaul demo</span>' : '')) +
+        '<i class="ri-arrow-right-line" aria-hidden="true"></i>' +
+        '</button>';
+    }
+
+    function render(r) {
+      var accs = [];
+      try { accs = CB.seed.accounts(r) || []; } catch (e) { accs = []; }
+      accountsEl.innerHTML = accs.length
+        ? accs.map(card).join('')
+        : '<p class="t-small">No demo accounts found. Reset the demo from the console.</p>';
+    }
+    render(role);
+
+    var seg = document.getElementById('role-seg');
+    CB.ui.segmentSelect(seg, role);
+    CB.ui.segment(seg, function (v) { role = v; render(v); });
+
+    dom.on(accountsEl, 'click', '.account', function () {
+      var id = this.getAttribute('data-id');
+      var res = CB.auth.signIn(id);
+      if (res && res.error) { CB.toast(res.error, 'warn'); return; }
+      var dest = next || (CB.auth.home ? CB.auth.home(role) : role + '/dashboard.html');
+      window.location.href = dest;
+    });
+  }());
+  </script>
+</body>
+</html>

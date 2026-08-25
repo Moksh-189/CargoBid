@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CargoBid — post the load, let the trucks bid</title>
+<meta name="description" content="CargoBid is a full-truck freight marketplace for India. Post a consignment and every verified fleet owner within range of your pickup competes on price, rating and pickup time. No brokers, no phone tag.">
+<meta name="theme-color" content="#8DB0F4">
+
+<link rel="icon" href="assets/img/logo.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300..700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.css" rel="stylesheet">
+
+<link rel="stylesheet" href="assets/css/base.css">
+<link rel="stylesheet" href="assets/css/marketing.css">
+</head>
+<body>
+
+<a class="skip-link" href="#main">Skip to content</a>
+
+<!-- ======================================================================
+     NAV
+     ====================================================================== -->
+<header class="nav" id="nav">
+  <div class="shell nav-inner">
+    <a class="logo" href="index.html" aria-label="CargoBid home">
+      <img src="assets/img/logo.svg" alt="" width="34" height="34">
+      <span>Cargo<em>Bid</em></span>
+    </a>
+
+    <nav class="nav-links" aria-label="Primary">
+      <a href="#how">How it works</a>
+      <a href="#shippers">For shippers</a>
+      <a href="#transporters">For transporters</a>
+      <a href="#trust">Trust</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+
+    <div class="nav-right">
+      <a class="btn btn-outline btn-sm" href="login.html">Sign in</a>
+      <a class="btn btn-sm" href="login.html?role=shipper">Post a load</a>
+      <button class="nav-burger" type="button" id="burger" aria-expanded="false" aria-controls="drawer" aria-label="Open menu">
+        <i class="ri-menu-line" aria-hidden="true"></i>
+      </button>
+    </div>
+  </div>
+
+  <div class="nav-drawer" id="drawer">
+    <a href="#how">How it works</a>
+    <a href="#shippers">For shippers</a>
+    <a href="#transporters">For transporters</a>
+    <a href="#trust">Trust</a>
+    <a href="#faq">FAQ</a>
+    <a class="btn btn-block" href="login.html">Sign in to the demo</a>
+  </div>
+</header>
+
+<main id="main">
+
+<!-- ======================================================================
+     HERO
+     ====================================================================== -->
+<section class="section hero bleed-white">
+  <div class="shell">
+    <div class="hero-head">
+      <p class="hero-eyebrow" data-reveal="fade">
+        <strong>New</strong> Return-load matching is live in 38 cities
+      </p>
+
+      <h1 class="reveal-lines">
+        <span class="line"><span>Post the load.</span></span>
+        <span class="line"><span>Let the trucks bid.</span></span>
+      </h1>
+
+      <p class="hero-lead" data-reveal style="--reveal-delay:220ms">
+        Your consignment goes straight to every verified fleet owner with an idle
+        truck near your pickup — and they compete on price, rating and how fast
+        they can reach you. No brokers taking a cut. No calling nine numbers to
+        find out who is free.
+      </p>
+
+      <div class="hero-actions" data-reveal style="--reveal-delay:320ms">
+        <a class="btn btn-lg" href="login.html?role=shipper">
+          I have a load to move <i class="ri-arrow-right-line" aria-hidden="true"></i>
+        </a>
+        <a class="link-play" href="login.html?role=transporter">
+          <span class="dot"><i class="ri-play-fill" aria-hidden="true"></i></span>
+          I have trucks to fill
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div class="hero-scene" aria-hidden="true">
+    <img class="hs-warehouse" src="assets/img/warehouse.svg" alt="">
+    <img class="hs-trailer"   src="assets/img/trailer-long.svg" alt="">
+    <img class="hs-truck"     src="assets/img/truck-container.svg" alt="">
+    <img class="hs-crates"    src="assets/img/crates.svg" alt="">
+    <img class="hs-forklift"  src="assets/img/forklift.svg" alt="">
+    <img class="hs-worker-a"  src="assets/img/worker.svg" alt="">
+    <img class="hs-worker-b"  src="assets/img/worker-wave.svg" alt="">
+  </div>
+</section>
+
+<!-- ======================================================================
+     CLIENT STRIP
+     ====================================================================== -->
+<section class="clients bleed-white">
+  <div class="shell">
+    <p class="clients-line" data-reveal="fade">
+      Over <b data-count="4200" data-suffix="">4,200</b> verified fleet owners
+      <em>across 38 cities</em>, moving <b data-count="19400" data-suffix="">19,400</b> trucks a month
+    </p>
+  </div>
+
+  <div class="marquee" role="presentation">
+    <div class="marquee-track" id="marqueeTrack">
+      <span class="client-mark"><i class="ri-building-2-line"></i>Marudhar Steel</span>
+      <span class="client-mark"><i class="ri-leaf-line"></i>Sanchi Foods</span>
+      <span class="client-mark"><i class="ri-shapes-line"></i>Veer Ceramics</span>
+      <span class="client-mark"><i class="ri-plant-line"></i>Kalpataru Agro</span>
+      <span class="client-mark"><i class="ri-drop-line"></i>Zenith Polymers</span>
+      <span class="client-mark"><i class="ri-scissors-cut-line"></i>Anand Textiles</span>
+      <span class="client-mark"><i class="ri-capsule-line"></i>Nirvana Pharma</span>
+      <span class="client-mark"><i class="ri-goblet-line"></i>Gokul Dairy</span>
+      <span class="client-mark"><i class="ri-hammer-line"></i>Sagar Cement</span>
+    </div>
+  </div>
+</section>
+
+<!-- ======================================================================
+     TWO DOORS - the whole product, in two cards
+     ====================================================================== -->
+<section class="section-tight bleed-white">
+  <div class="shell">
+    <div class="sec-head sec-head-center" data-reveal="fade">
+      <span class="t-eyebrow">Two sides, one marketplace</span>
+      <h2 class="t-h2">Pick the side you are on. Both are fully playable.</h2>
+    </div>
+
+    <div class="doors" data-reveal-group="120">
+      <article class="door" id="shippers" data-reveal>
+        <img class="door-art" src="assets/img/warehouse.svg" alt="" aria-hidden="true">
+        <span class="door-tag"><i class="ri-box-3-line" aria-hidden="true"></i>Shipper</span>
+        <h3>You have cargo and no idea what it should cost.</h3>
+        <p>
+          Structure the load once — material, weight, truck type, flags, pickup
+          window — and CargoBid runs the price discovery for you.
+        </p>
+        <ul>
+          <li><i class="ri-check-line" aria-hidden="true"></i>Blind bids or a live reverse auction, your call per load</li>
+          <li><i class="ri-check-line" aria-hidden="true"></i>Sort offers by price, rating, reliability, fleet size or pickup ETA</li>
+          <li><i class="ri-check-line" aria-hidden="true"></i>Counter-offer and negotiate inside the platform</li>
+          <li><i class="ri-check-line" aria-hidden="true"></i>Track the trip, capture POD, rate on three separate vectors</li>
+        </ul>
+        <a class="btn" href="login.html?role=shipper">
+          Enter the shipper side <i class="ri-arrow-right-line" aria-hidden="true"></i>
+        </a>
+      </article>
+
+      <article class="door" id="transporters" data-reveal>
+        <img class="door-art" src="assets/img/truck-open.svg" alt="" aria-hidden="true">
+        <span class="door-tag"><i class="ri-truck-line" aria-hidden="true"></i>Transporter</span>
+        <h3>You have trucks standing idle and no way to hear about work.</h3>
+        <p>
+          Set your home base and service radius once. Every load posted inside
+          that circle reaches you — by app, SMS or WhatsApp.
+        </p>
+        <ul>
+          <li><i class="ri-check-line" aria-hidden="true"></i>A fit score on every load, telling you which of your trucks matches</li>
+          <li><i class="ri-check-line" aria-hidden="true"></i>See the leading bid in open auctions and undercut in one tap</li>
+          <li><i class="ri-check-line" aria-hidden="true"></i>Return-load finder so you stop driving home empty</li>
+          <li><i class="ri-check-line" aria-hidden="true"></i>Upload GST, PAN and RC once to carry the verified badge</li>
+        </ul>
+        <a class="btn" href="login.html?role=transporter">
+          Enter the transporter side <i class="ri-arrow-right-line" aria-hidden="true"></i>
+        </a>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ======================================================================
+     SERVICES - full accent band
+     ====================================================================== -->
+<section class="section services bleed-accent">
+  <span class="band-disc" aria-hidden="true"><i class="ri-auction-line"></i></span>
+
+  <div class="shell">
+    <div class="sec-head" data-reveal="fade">
+      <span class="t-eyebrow">What moves on CargoBid</span>
+      <h2 class="t-h2">Full-truck loads only.<br>Every body type, priced by the people who own the metal.</h2>
+    </div>
+
+    <div class="svc-grid" data-reveal-group="100">
+      <article class="svc-card" data-reveal>
+        <div class="svc-media"><img src="assets/img/truck-open.svg" alt="Open body goods truck"></div>
+        <div class="svc-foot">
+          <div>
+            <h3 class="svc-title">Open body</h3>
+            <p class="svc-note">Steel, cement, machinery. Crane loadable, 9 t to 25 t.</p>
+          </div>
+          <span class="svc-go" aria-hidden="true"><i class="ri-arrow-right-line"></i></span>
+        </div>
+      </article>
+
+      <article class="svc-card" data-reveal>
+        <div class="svc-media"><img src="assets/img/truck-container.svg" alt="Closed container truck"></div>
+        <div class="svc-foot">
+          <div>
+            <h3 class="svc-title">Container</h3>
+            <p class="svc-note">Sealed and weather safe. Palletised FMCG, textiles, pharma.</p>
+          </div>
+          <span class="svc-go" aria-hidden="true"><i class="ri-arrow-right-line"></i></span>
+        </div>
+      </article>
+
+      <article class="svc-card" data-reveal>
+        <div class="svc-media"><img src="assets/img/truck-reefer.svg" alt="Refrigerated truck"></div>
+        <div class="svc-foot">
+          <div>
+            <h3 class="svc-title">Refrigerated</h3>
+            <p class="svc-note">−20°C to +25°C, data logged. Frozen, dairy, fresh produce.</p>
+          </div>
+          <span class="svc-go" aria-hidden="true"><i class="ri-arrow-right-line"></i></span>
+        </div>
+      </article>
+
+      <article class="svc-card" data-reveal>
+        <div class="svc-media"><img src="assets/img/truck-tipper.svg" alt="Tipper truck"></div>
+        <div class="svc-foot">
+          <div>
+            <h3 class="svc-title">Tipper &amp; bulk</h3>
+            <p class="svc-note">Sand, aggregate, coal, ore. Tipping at site, no labour needed.</p>
+          </div>
+          <span class="svc-go" aria-hidden="true"><i class="ri-arrow-right-line"></i></span>
+        </div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ======================================================================
+     HOW IT WORKS
+     ====================================================================== -->
+<section class="section bleed-white" id="how">
+  <div class="shell">
+    <div class="sec-head" data-reveal="fade">
+      <span class="t-eyebrow">How it works</span>
+      <h2 class="t-h2">Four steps. Roughly eleven minutes from posting to award.</h2>
+    </div>
+
+    <div class="steps" data-reveal-group="90">
+      <article class="step" data-reveal>
+        <h3>Structure the load</h3>
+        <p>
+          Route, weight, truck type, body length, material flags and a pickup
+          window. Structured input is what makes the bids comparable.
+        </p>
+      </article>
+      <article class="step" data-reveal>
+        <h3>We geofence the alert</h3>
+        <p>
+          Only fleet owners whose base or current position sits inside their own
+          service radius of your pickup get pinged. Nobody gets spammed.
+        </p>
+      </article>
+      <article class="step" data-reveal>
+        <h3>They compete</h3>
+        <p>
+          Blind sealed bids, or an open reverse auction where the leading number
+          is visible and gets undercut. Counter-offers stay on the platform.
+        </p>
+      </article>
+      <article class="step" data-reveal>
+        <h3>You award and track</h3>
+        <p>
+          Compare on more than price, award, follow the checkpoints to POD, then
+          rate punctuality, cargo safety and communication separately.
+        </p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ======================================================================
+     CAPABILITY SPLIT - ranking is not just price
+     ====================================================================== -->
+<section class="section bleed-wash" id="trust">
+  <div class="shell">
+    <div class="sec-head sec-head-wide" data-reveal="fade">
+      <span class="t-eyebrow">Multi-parameter comparison</span>
+      <h2 class="t-h2">
+        The cheapest bid
+        <span class="step-line">is rarely the cheapest job.</span>
+      </h2>
+    </div>
+
+    <div class="split">
+      <div class="split-media" data-reveal="left">
+        <img src="assets/img/trailer-long.svg" alt="Articulated trailer loaded with strapped cargo">
+      </div>
+
+      <div class="split-text" data-reveal="right">
+        <p class="t-body">
+          A ₹700 saving means nothing if the truck turns up a day late and two
+          crates arrive scuffed. Every bid on CargoBid carries the operator's
+          reliability score, their three-vector rating, fleet size, verification
+          state and how fast they can physically reach your gate.
+        </p>
+        <p class="t-body">
+          We compute a <strong>Best value</strong> ranking across all of it — and
+          we show you the maths, so you can overrule us.
+        </p>
+        <a class="btn btn-outline" href="login.html?role=shipper">
+          See a live bid table <i class="ri-arrow-right-up-line" aria-hidden="true"></i>
+        </a>
+
+        <dl class="split-stats">
+          <div class="split-stat"><dt>Bids per load</dt><dd data-count="6.4" data-decimals="1">6.4</dd></div>
+          <div class="split-stat"><dt>Saved vs first quote</dt><dd data-count="11" data-suffix="%">11%</dd></div>
+          <div class="split-stat"><dt>To first bid</dt><dd data-count="4" data-suffix=" min">4 min</dd></div>
+          <div class="split-stat"><dt>Operators verified</dt><dd data-count="71" data-suffix="%">71%</dd></div>
+        </dl>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================================================================
+     TESTIMONIAL
+     ====================================================================== -->
+<section class="section-tight bleed-white">
+  <div class="shell">
+    <figure class="quote-card" id="quoteCard" data-reveal="scale">
+      <i class="ri-double-quotes-l quote-mark" aria-hidden="true"></i>
+      <blockquote id="quoteText">
+        I used to keep four transporters on speed dial and take whatever number
+        they gave me. Last Tuesday I posted a Jaipur to Delhi steel load at
+        eleven in the morning and had seven bids by quarter past. The one I took
+        was eighteen hundred rupees under what I have been paying for two years —
+        from a fleet owner twelve kilometres from my plant that I had never heard of.
+      </blockquote>
+      <figcaption class="quote-foot">
+        <div class="quote-who">
+          <span class="avatar" id="quoteAvatar" aria-hidden="true">RS</span>
+          <div>
+            <b id="quoteName">Rakesh Sharma</b>
+            <small id="quoteRole">Sharma Steel Traders · Jaipur</small>
+          </div>
+        </div>
+        <div class="quote-nav">
+          <button type="button" id="quotePrev" aria-label="Previous testimonial"><i class="ri-arrow-left-line" aria-hidden="true"></i></button>
+          <button type="button" id="quoteNext" aria-label="Next testimonial"><i class="ri-arrow-right-line" aria-hidden="true"></i></button>
+        </div>
+      </figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- ======================================================================
+     WHY US
+     ====================================================================== -->
+<section class="section bleed-white">
+  <div class="shell why">
+    <div class="why-copy" data-reveal="left">
+      <span class="t-eyebrow">Why it holds together</span>
+      <h2 class="t-h2">Trust is the only asset a young marketplace has.</h2>
+      <p class="t-body">
+        We are deliberately not the incumbents' network. Everyone bidding here is
+        a local fleet owner, which means the platform has to do the work of
+        establishing who is good. Four mechanisms carry that load.
+      </p>
+      <a class="btn btn-outline" href="login.html?role=transporter">
+        See a transporter profile <i class="ri-arrow-right-up-line" aria-hidden="true"></i>
+      </a>
+    </div>
+
+    <div class="why-grid" data-reveal-group="90">
+      <article class="why-item" data-reveal>
+        <span class="why-icon"><i class="ri-verified-badge-line" aria-hidden="true"></i></span>
+        <h3>Document verification</h3>
+        <p>
+          GST, PAN and vehicle RCs are uploaded and checked. Only operators with
+          all three clear carry the badge — and a badge visibly beats ₹500.
+        </p>
+      </article>
+
+      <article class="why-item" data-reveal>
+        <span class="why-icon"><i class="ri-focus-3-line" aria-hidden="true"></i></span>
+        <h3>Three-vector ratings</h3>
+        <p>
+          Punctuality, cargo safety and communication are rated separately. One
+          blended star is useless; knowing someone is punctual but silent is not.
+        </p>
+      </article>
+
+      <article class="why-item" data-reveal>
+        <span class="why-icon"><i class="ri-shield-star-line" aria-hidden="true"></i></span>
+        <h3>Reliability score</h3>
+        <p>
+          Computed from real platform behaviour — deliveries, on-time rate,
+          cancellations after winning, no-shows. It moves whether you like it or not.
+        </p>
+      </article>
+
+      <article class="why-item" data-reveal>
+        <span class="why-icon"><i class="ri-chat-poll-line" aria-hidden="true"></i></span>
+        <h3>Negotiation on record</h3>
+        <p>
+          Counter-offers and chat sit against the bid they belong to. When the
+          rate changed and why is never somebody's word against another's.
+        </p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ======================================================================
+     BACKHAUL - the accent band
+     ====================================================================== -->
+<section class="section bleed-accent">
+  <div class="shell backhaul">
+    <div class="backhaul-copy" data-reveal="left">
+      <span class="t-eyebrow">Return-load optimiser</span>
+      <h2 class="t-h2">
+        The empty return leg
+        <span class="step-line">is where fleets bleed.</span>
+      </h2>
+      <p class="t-body">
+        A Jaipur truck delivers to Delhi and then either dead-heads home burning
+        its own diesel, or sits for two days waiting on a broker to find
+        something. Both outcomes cost the owner money.
+      </p>
+      <ul class="tick-list">
+        <li><i class="ri-checkbox-circle-line" aria-hidden="true"></i>Set your current city the moment you unload</li>
+        <li><i class="ri-checkbox-circle-line" aria-hidden="true"></i>Every load heading back toward your home base surfaces instantly</li>
+        <li><i class="ri-checkbox-circle-line" aria-hidden="true"></i>Because the return leg is already a sunk cost, these bids come in sharp</li>
+        <li><i class="ri-checkbox-circle-line" aria-hidden="true"></i>Shippers on that lane get rates nobody else can match</li>
+      </ul>
+
+      <div class="savings-card">
+        <span class="t-eyebrow">Delhi → Jaipur, 268 km</span>
+        <strong>₹6,970</strong>
+        <span>of empty running a single backhaul removes from one truck's month.
+          Multiply that across six trucks and it is the difference between a
+          working year and a bad one.</span>
+      </div>
+    </div>
+
+    <div class="backhaul-media" data-reveal="right">
+      <img src="assets/img/map-route.svg" alt="Isometric route map with origin and destination pins">
+    </div>
+  </div>
+</section>
+
+<!-- ======================================================================
+     FAQ
+     ====================================================================== -->
+<section class="section bleed-white" id="faq">
+  <div class="shell">
+    <div class="sec-head sec-head-center" data-reveal="fade">
+      <span class="t-eyebrow">Straight answers</span>
+      <h2 class="t-h2">Frequently asked questions</h2>
+    </div>
+
+    <div class="faq-list" data-accordion="single" id="faq-acc"></div>
+  </div>
+</section>
+
+<!-- ======================================================================
+     SUBSCRIBE
+     ====================================================================== -->
+<section class="section-tight bleed-white">
+  <div class="shell">
+    <div class="subscribe-card" data-reveal="scale">
+      <div class="subscribe-copy">
+        <span class="t-eyebrow">Lane rate digest</span>
+        <h2 class="t-h2">What did your corridor actually clear at last week?</h2>
+        <p class="t-small">
+          A weekly note with median clearing rates on the 40 busiest Indian
+          lanes, drawn from real awarded bids. No sales calls.
+        </p>
+        <form class="subscribe-form" id="subForm" novalidate>
+          <label class="sr-only" for="subEmail">Work email</label>
+          <input type="email" id="subEmail" name="email" placeholder="you@company.in" autocomplete="email" required>
+          <button class="btn btn-sm" type="submit">Subscribe</button>
+        </form>
+        <p class="t-small" id="subNote" role="status"></p>
+      </div>
+
+      <div class="subscribe-media" aria-hidden="true">
+        <img src="assets/img/train-cargo.svg" alt="">
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<!-- ======================================================================
+     FOOTER
+     ====================================================================== -->
+<footer class="foot bleed-white">
+  <div class="shell">
+    <div class="foot-cols">
+      <div class="foot-brand">
+        <a class="logo" href="index.html" aria-label="CargoBid home">
+          <img src="assets/img/logo.svg" alt="" width="34" height="34">
+          <span>Cargo<em>Bid</em></span>
+        </a>
+        <p>
+          A full-truck freight marketplace for India. Matching, bidding and
+          trust. Payments stay between you and your transporter — we do not
+          touch the money.
+        </p>
+        <div class="socials">
+          <a href="#faq" aria-label="CargoBid on Instagram"><i class="ri-instagram-line" aria-hidden="true"></i></a>
+          <a href="#faq" aria-label="CargoBid on LinkedIn"><i class="ri-linkedin-fill" aria-hidden="true"></i></a>
+          <a href="#faq" aria-label="CargoBid on X"><i class="ri-twitter-x-line" aria-hidden="true"></i></a>
+          <a href="#faq" aria-label="CargoBid on WhatsApp"><i class="ri-whatsapp-line" aria-hidden="true"></i></a>
+        </div>
+      </div>
+
+      <div class="foot-col">
+        <h4>Product</h4>
+        <ul>
+          <li><a href="#how">How it works</a></li>
+          <li><a href="#trust">Bid comparison</a></li>
+          <li><a href="#faq">Return loads</a></li>
+          <li><a href="login.html?role=shipper">Post a load</a></li>
+          <li><a href="login.html?role=transporter">Find loads</a></li>
+        </ul>
+      </div>
+
+      <div class="foot-col">
+        <h4>Shippers</h4>
+        <ul>
+          <li><a href="shipper/dashboard.html">Dashboard</a></li>
+          <li><a href="shipper/post-load.html">Post a load</a></li>
+          <li><a href="shipper/loads.html">My loads</a></li>
+          <li><a href="shipper/transporters.html">Transporter directory</a></li>
+          <li><a href="shipper/trips.html">Trip tracking</a></li>
+        </ul>
+      </div>
+
+      <div class="foot-col">
+        <h4>Transporters</h4>
+        <ul>
+          <li><a href="transporter/dashboard.html">Dashboard</a></li>
+          <li><a href="transporter/marketplace.html">Load board</a></li>
+          <li><a href="transporter/return-loads.html">Return loads</a></li>
+          <li><a href="transporter/fleet.html">Fleet &amp; documents</a></li>
+          <li><a href="transporter/bids.html">My bids</a></li>
+        </ul>
+      </div>
+
+      <div class="foot-col">
+        <h4>Contact</h4>
+        <ul>
+          <li><span>Malviya Nagar Industrial Area<br>Jaipur, Rajasthan 302017</span></li>
+          <li><a href="tel:+919829000000">+91 98290 00000</a></li>
+          <li><a href="mailto:hello@cargobid.in">hello@cargobid.in</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="foot-bottom">
+      <p>© 2026 CargoBid Technologies. A demonstration build — no real freight is booked here.</p>
+      <div class="foot-legal">
+        <a href="#faq">Privacy</a>
+        <a href="#faq">Terms</a>
+        <a href="#faq">Grievance officer</a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<div class="grain" aria-hidden="true"></div>
+
+<script src="assets/js/core.js"></script>
+<script src="assets/js/match.js"></script>
+<script src="assets/js/seed.js"></script>
+<script src="assets/js/sim.js"></script>
+<script src="assets/js/ui.js"></script>
+<script src="assets/js/console.js"></script>
+<script src="assets/js/reveal.js"></script>
+<script src="assets/js/marketing.js"></script>
+</body>
+</html>

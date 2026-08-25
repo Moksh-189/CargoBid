@@ -1,0 +1,452 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Load · CargoBid</title>
+  <meta name="theme-color" content="#F4F6FD">
+  <link rel="icon" href="../assets/img/logo.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300..700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.css" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/base.css">
+  <link rel="stylesheet" href="../assets/css/app.css">
+</head>
+<body>
+  <a class="skip-link" href="#app-main">Skip to content</a>
+  <div class="grain" aria-hidden="true"></div>
+
+  <script src="../assets/js/core.js"></script>
+  <script src="../assets/js/match.js"></script>
+  <script src="../assets/js/seed.js"></script>
+  <script src="../assets/js/sim.js"></script>
+  <script src="../assets/js/ui.js"></script>
+  <script src="../assets/js/console.js"></script>
+  <script src="../assets/js/shell.js"></script>
+  <script>
+  (function () {
+    'use strict';
+    var dom = CB.dom, esc = CB.util.esc, f = CB.fmt, q = CB.q, ui = CB.ui, act = CB.act, match = CB.match;
+
+    var ctx = CB.shell.mount({
+      role: 'transporter', nav: 'marketplace', title: 'Load', live: true, render: render
+    });
+    if (!ctx) return;
+    var me = ctx.user;
+
+    /* Record the view once (silent save — no re-render loop). Feeds the
+       shipper's "carriers viewed" counter. */
+    if (CB.param('id')) act.viewLoad(CB.param('id'));
+
+    function loadId() { return CB.param('id'); }
+    function safe(fn, d) { try { var v = fn(); return v == null ? d : v; } catch (e) { return d; } }
+
+    /* ---- delegated actions (bound once; re-query fresh each click) ---- */
+    dom.on(ctx.main, 'click', '.js-place-bid', function () { openBidModal(); });
+
+    dom.on(ctx.main, 'click', '.js-withdraw', function () {
+      var b = q.myBidOn(loadId(), me.id); if (!b) return;
+      ui.confirm({
+        title: 'Withdraw your bid?', tone: 'danger', icon: 'ri-close-line', confirmLabel: 'Withdraw bid',
+        subtitle: 'You can bid again while the auction is open, but you lose your place in line.'
+      }).then(function (ok) {
+        if (!ok) return;
+        var r = act.withdrawBid(b.id);
+        if (r && r.error) { CB.toast(r.error, 'warn'); return; }
+        CB.toast('Bid withdrawn', 'warn');
+      });
+    });
+
+    dom.on(ctx.main, 'click', '.js-counter-accept', function () {
+      var b = q.myBidOn(loadId(), me.id); if (!b) return;
+      var last = lastCounter(b);
+      var r = act.respondCounter(b.id, true);
+      if (r && r.error) { CB.toast(r.error, 'warn'); return; }
+      CB.toast('Counter accepted · ' + f.money(last ? last.amount : b.amount), 'ok');
+    });
+
+    dom.on(ctx.main, 'click', '.js-counter-decline', function () {
+      var b = q.myBidOn(loadId(), me.id); if (!b) return;
+      var r = act.respondCounter(b.id, false);
+      if (r && r.error) { CB.toast(r.error, 'warn'); return; }
+      CB.toast('Counter declined — your original bid still stands', 'info');
+    });
+
+    dom.on(ctx.main, 'click', '.js-counter-back', function () { openCounterModal(); });
+
+    /* ---- bid modal (lives outside <main>; live re-render is harmless) ---- */
+    function openBidModal() {
+      var l = q.load(loadId()); if (!l || l.status !== 'open') return;
+      var eligible = match.eligibleTrucks(me.id, l);
+      var existing = q.myBidOn(l.id, me.id);
+      var guide = match.priceGuide(l);
+      var lowest = q.lowestBid(l.id);
+      var floor = safe(function () { return match.floorPrice(l, me.id); }, 0);
+
+      if (!eligible.length) {
+        ui.modal({
+          title: 'No eligible truck', size: 'sm',
+          body: '<p class="t-body">None of your trucks match this load’s type and minimum capacity. Add a suitable truck to your fleet, then bid.</p>',
+          actions: [
+            { label: 'Close', className: 'btn-outline', onClick: function (m) { m.close(); } },
+            { label: 'Go to fleet', icon: 'ri-caravan-line', onClick: function (m) { m.close(); window.location.href = 'fleet.html'; } }
+          ]
+        });
+        return;
+      }
+
+      var suggest = existing ? existing.amount
+        : (l.mode !== 'blind' && lowest ? Math.max(lowest.amount - 50, floor || 500, 500) : guide.base);
+
+      var truckOpts = eligible.map(function (tk) {
+        var tt = CB.truckType(tk.type);
+        return '<option value="' + tk.id + '">' + esc(tk.regNo) + ' · ' + esc(tt.label) + ' · ' + f.tons(tk.capacityTons) +
+          (tk.status === 'idle' ? ' · idle' : '') + '</option>';
+      }).join('');
+
+      var m = ui.modal({
+        eyebrow: l.id + (l.mode === 'blind' ? ' · sealed bid' : ' · reverse auction'),
+        title: existing ? 'Update your bid' : 'Place a bid',
+        subtitle: l.origin.city + ' → ' + l.destination.city + ' · ' + f.km(l.distanceKm),
+        size: 'sm',
+        body:
+          '<form id="bid-form" class="stack-sm" novalidate>' +
+            (l.mode !== 'blind' && lowest
+              ? '<div class="notice notice-info" style="margin-bottom:.25rem"><i class="ri-flag-2-line"></i><div>Leading bid is <strong>' + f.money(lowest.amount) + '</strong>. Come in under it to take the lead.</div></div>'
+              : (l.mode === 'blind' ? '<div class="notice notice-info" style="margin-bottom:.25rem"><i class="ri-eye-off-line"></i><div>Sealed auction — rivals can’t see your number, and you can’t see theirs.</div></div>' : '')) +
+            '<div class="field"><label for="bid-amt">Your rate (₹)</label>' +
+              '<input id="bid-amt" name="amount" class="input" type="number" min="500" step="50" value="' + suggest + '" inputmode="numeric"></div>' +
+            '<p class="t-small" id="bid-hint"></p>' +
+            '<div class="field"><label for="bid-truck">Truck to commit</label>' +
+              '<select id="bid-truck" name="truckId" class="select">' + truckOpts + '</select></div>' +
+            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">' +
+              '<div class="field"><label for="bid-eta">Pickup ETA</label><select id="bid-eta" name="eta" class="select">' +
+                '<option value="2">Within 2 hours</option><option value="4">Within 4 hours</option>' +
+                '<option value="6" selected>Within 6 hours</option><option value="12">Within 12 hours</option>' +
+                '<option value="24">Next day</option><option value="48">In 2 days</option></select></div>' +
+              '<div class="field"><label for="bid-valid">Hold rate for</label><select id="bid-valid" name="valid" class="select">' +
+                '<option value="6">6 hours</option><option value="12">12 hours</option>' +
+                '<option value="24" selected>24 hours</option><option value="48">48 hours</option></select></div>' +
+            '</div>' +
+            '<div class="field"><label for="bid-note">Note to shipper <span class="t-small">· optional</span></label>' +
+              '<textarea id="bid-note" name="note" class="textarea" rows="2" maxlength="200" placeholder="e.g. Tarpaulin and ropes included, can load tonight.">' + (existing && existing.note ? esc(existing.note) : '') + '</textarea></div>' +
+          '</form>',
+        actions: [
+          { label: 'Cancel', className: 'btn-outline', onClick: function (mo) { mo.close(); } },
+          { label: existing ? 'Update bid' : 'Place bid', icon: 'ri-price-tag-3-line', onClick: doPlace }
+        ],
+        onMount: function (mo) {
+          var amt = dom.$('#bid-amt', mo.el), hint = dom.$('#bid-hint', mo.el);
+          function upd() {
+            var v = Number(amt.value) || 0;
+            var per = (v && l.distanceKm) ? ' · ' + f.perKm(v, l.distanceKm) : '';
+            var floorBit = floor ? ' · <span' + (v && v < floor ? ' style="color:var(--stop)"' : '') + '>walk-away ≈ ' + f.money(floor) + '</span>' : '';
+            hint.innerHTML = (v ? f.money(v) + per : 'Enter a rate') + floorBit;
+          }
+          amt.addEventListener('input', upd); upd();
+          if (existing) {
+            var ts = dom.$('#bid-truck', mo.el); if (existing.truckId) ts.value = existing.truckId;
+            var es = dom.$('#bid-eta', mo.el); if (existing.etaPickupHrs) es.value = String(existing.etaPickupHrs);
+          }
+        }
+      });
+
+      function doPlace(mo) {
+        var form = dom.$('#bid-form', mo.el);
+        var d = ui.serialize(form);
+        var amount = Math.round(Number(d.amount));
+        if (!(amount > 0)) { ui.setError(dom.$('#bid-amt', mo.el), 'Enter a valid rate'); return; }
+        if (l.ceiling && amount > l.ceiling) { ui.setError(dom.$('#bid-amt', mo.el), 'Above the shipper’s ceiling of ' + f.money(l.ceiling)); return; }
+        var tk = q.truck(d.truckId);
+        mo.setBusy(true);
+        var r = act.placeBid({
+          loadId: l.id, transporterId: me.id, amount: amount,
+          etaPickupHrs: Number(d.eta) || 6, truckId: d.truckId, truckType: tk ? tk.type : null,
+          note: (d.note || '').trim(), validHrs: Number(d.valid) || 24
+        });
+        if (!r || r.error) { mo.setBusy(false); ui.setError(dom.$('#bid-amt', mo.el), (r && r.error) || 'Could not place the bid'); return; }
+        mo.close();
+        CB.toast((existing ? 'Bid updated · ' : 'Bid placed · ') + f.money(amount), 'ok');
+      }
+    }
+
+    function openCounterModal() {
+      var l = q.load(loadId()); if (!l) return;
+      var b = q.myBidOn(l.id, me.id); if (!b) return;
+      var last = lastCounter(b);
+      var start = last ? Math.round((last.amount + b.amount) / 2) : b.amount;
+      ui.modal({
+        eyebrow: 'Counter-offer', title: 'Counter the shipper',
+        subtitle: last ? 'They offered ' + f.money(last.amount) + '. Propose your number.' : 'Propose a revised rate.',
+        size: 'sm',
+        body:
+          '<div class="field"><label for="cb-amt">Your counter (₹)</label>' +
+            '<input id="cb-amt" class="input" type="number" min="500" step="50" value="' + start + '"></div>' +
+          '<div class="field" style="margin-top:1rem"><label for="cb-note">Note <span class="t-small">· optional</span></label>' +
+            '<textarea id="cb-note" class="textarea" rows="2" placeholder="e.g. Meet me here and I’ll load tonight."></textarea></div>',
+        actions: [
+          { label: 'Cancel', className: 'btn-outline', onClick: function (mo) { mo.close(); } },
+          { label: 'Send counter', icon: 'ri-arrow-left-right-line', onClick: function (mo) {
+              var amt = Math.round(Number(dom.$('#cb-amt', mo.el).value));
+              if (!(amt > 0)) { ui.setError(dom.$('#cb-amt', mo.el), 'Enter a valid amount'); return; }
+              var r = act.counterOffer({ bidId: b.id, by: 'transporter', amount: amt, note: dom.$('#cb-note', mo.el).value });
+              if (r && r.error) { CB.toast(r.error, 'warn'); return; }
+              CB.toast('Counter of ' + f.money(amt) + ' sent', 'ok'); mo.close();
+          } }
+        ]
+      });
+    }
+
+    function lastCounter(b) { return (b.counters && b.counters.length) ? b.counters[b.counters.length - 1] : null; }
+
+    /* ==================================================================== */
+    function notFound() {
+      ctx.setTitle('Load not found');
+      ctx.main.innerHTML =
+        '<nav class="breadcrumb"><a href="marketplace.html">Marketplace</a><i class="ri-arrow-right-s-line"></i><span>Not found</span></nav>' +
+        ui.empty('ri-error-warning-line', 'Load not found', 'This load does not exist in this browser, or it has been removed.',
+          '<a class="btn" href="marketplace.html"><i class="ri-arrow-left-line"></i>Back to marketplace</a>');
+    }
+
+    function render(ctx) {
+      var l = q.load(loadId());
+      if (!l) { notFound(); return; }
+
+      ctx.setTitle(l.id);
+      ctx.setSubtitle(l.origin.city + ' → ' + l.destination.city);
+
+      var bids = q.liveBidsFor(l.id);            // amount asc
+      var myBid = q.myBidOn(l.id, me.id);
+      var fit = safe(function () { return match.fit(me.id, l); }, { score: 0, reasons: [], blockers: [], reach: { inRange: false } });
+      var guide = match.priceGuide(l);
+      var tt = CB.truckType(l.need.truckType);
+      var tp = q.transporter(me.id) || {};
+      var bh = safe(function () { return match.backhaul(tp, l); }, { is: false });
+      var trip = q.tripFor(l.id);
+      var awardedToMe = trip && trip.transporterId === me.id;
+      var settled = l.status === 'awarded' || l.status === 'in-transit' || l.status === 'delivered';
+      var shipper = q.user(l.shipperId);
+      var band = match.fitBand(fit.score);
+
+      /* ---- main-column top: auction bar / banners ---- */
+      var mainTop = '';
+      if (l.status === 'open') {
+        mainTop =
+          '<div class="auction-bar">' +
+            '<span class="pulse" aria-hidden="true"></span>' +
+            '<div><div class="auction-label">Bidding open</div>' + ui.countdown(l.bidCloseAt, 'Closes in ') + '</div>' +
+            '<div class="auction-sep"></div>' +
+            '<div><div class="auction-label">' + (l.mode === 'blind' ? 'Sealed bids' : 'Bids') + '</div><strong style="font-size:1.125rem">' + bids.length + '</strong></div>' +
+            (l.mode !== 'blind' && bids.length ? '<div class="auction-sep"></div><div><div class="auction-label">Leading</div><strong class="t-num" style="font-size:1.125rem">' + f.money(bids[0].amount) + '</strong></div>' : '') +
+            '<div style="margin-left:auto">' +
+              '<button class="btn btn-sm js-place-bid"><i class="' + (myBid ? 'ri-edit-line' : 'ri-price-tag-3-line') + '"></i>' + (myBid ? 'Update bid' : 'Place bid') + '</button>' +
+            '</div>' +
+          '</div>';
+      } else if (l.status === 'closed') {
+        mainTop = '<div class="notice notice-warn"><i class="ri-lock-2-line"></i><div>Bidding is closed. The shipper is choosing a carrier now.</div></div>';
+      } else if (awardedToMe) {
+        mainTop = '<div class="notice notice-ok"><i class="ri-award-line"></i><div><strong>You won this load.</strong> A trip has been created — start the pickup and update checkpoints as you go. ' +
+          '<a href="trips.html?id=' + trip.id + '" style="font-weight:600">Track trip →</a></div></div>';
+      } else if (settled) {
+        mainTop = '<div class="notice"><i class="ri-information-line"></i><div>This load was awarded to another carrier.</div></div>';
+      } else if (l.status === 'cancelled') {
+        mainTop = '<div class="notice notice-stop"><i class="ri-close-circle-line"></i><div>This load was cancelled by the shipper.</div></div>';
+      }
+
+      /* ---- my bid card ---- */
+      var myBidHtml = myBid ? myBidCard(myBid, l) : (l.status === 'open' ? bidPromptCard(l, guide) : '');
+
+      /* ---- fit card ---- */
+      var reasons = (fit.reasons || []).map(function (r) { return '<div class="fit-reason"><i class="' + r.icon + '"></i>' + esc(r.text) + '</div>'; }).join('');
+      var blockers = (fit.blockers || []).map(function (b) { return '<div class="fit-reason is-block"><i class="ri-error-warning-line"></i>' + esc(b) + '</div>'; }).join('');
+      var fitCard =
+        '<div class="card"><div class="block-head"><h3 style="font-size:1rem">Why this fits your fleet</h3>' +
+          '<span class="fit-badge fit-' + CB.score.band(fit.score).key + '">' + fit.score + ' / 100 · ' + esc(band.label) + '</span></div>' +
+          '<div class="fit">' + ui.dial(fit.score, { size: 72, caption: band.label }) +
+            '<div class="fit-reasons">' + (reasons || '<div class="fit-reason"><i class="ri-check-line"></i>Matched to your fleet and lanes.</div>') + blockers + '</div>' +
+          '</div></div>';
+
+      /* ---- bids block ---- */
+      var bidsHtml = bidsBlock(l, bids);
+
+      /* ---- aside: price guide ---- */
+      var pinAmt = (l.mode !== 'blind' && bids.length) ? bids[0].amount : guide.base;
+      var span = Math.max(guide.high - guide.low, 1);
+      var pinPct = Math.max(3, Math.min(97, Math.round((pinAmt - guide.low) / span * 100)));
+      var guideCard =
+        '<div class="card guide">' +
+          '<div class="row-between"><h3 style="font-size:1rem">Price guide</h3>' +
+            (guide.thin ? '<span class="chip chip-xs chip-warn"><i class="ri-alert-line"></i>Thin market</span>'
+                        : '<span class="chip chip-xs chip-ok">' + guide.supply + ' carriers matched</span>') + '</div>' +
+          '<div class="guide-scale"><span class="guide-pin" style="left:' + pinPct + '%" data-label="' +
+            (l.mode !== 'blind' && bids.length ? 'Leading ' : 'Typical ') + f.moneyShort(pinAmt) + '"></span></div>' +
+          '<div class="guide-ends"><span>' + f.moneyShort(guide.low) + '</span><span>' + f.moneyShort(guide.high) + '</span></div>' +
+          '<p class="t-small" style="margin-top:.625rem">Typical for this lane: <strong>' + f.money(guide.base) + '</strong>' +
+            (guide.perKm ? ' · ' + f.money(guide.perKm) + '/km' : '') + '</p>' +
+        '</div>';
+
+      /* ---- aside: backhaul ---- */
+      var backhaulCard = bh.is
+        ? '<div class="card"><h3 style="font-size:1rem;margin-bottom:.75rem">Backhaul opportunity</h3>' +
+            '<div class="backhaul-note"><i class="ri-arrow-go-back-line"></i><div>Delivering this ends within <strong>' + f.km(bh.dropsWithinKm) + '</strong> of ' + esc(bh.homeBase) +
+              ' — it covers <strong>' + bh.coverage + '%</strong> of the empty run home from ' + esc(bh.strandedAt) + '.</div></div>' +
+            ui.kv([
+              ['Home base', esc(bh.homeBase)],
+              ['Fleet now in', esc(bh.strandedAt)],
+              ['Empty return leg', f.km(bh.deadHeadKm) + ' · ' + f.money(bh.deadHeadCost)],
+              ['Gets you closer by', f.km(bh.closerBy)]
+            ]) +
+          '</div>'
+        : '';
+
+      /* ---- aside: load details ---- */
+      var flagChips = ui.flagChips(l.material.flags);
+      var detailCard =
+        '<div class="card"><h3 style="font-size:1rem;margin-bottom:.75rem">Load details</h3>' +
+          ui.kv([
+            ['Material', esc(l.material.name)],
+            ['Weight', f.tons(l.material.weightTons)],
+            l.material.dims ? ['Dimensions', esc(l.material.dims)] : null,
+            flagChips ? ['Handling', flagChips] : null,
+            ['Truck', tt.label + (l.need.count > 1 ? ' × ' + l.need.count : '')],
+            ['Min capacity', f.tons(l.need.minCapacityTons)],
+            ['Distance', f.km(l.distanceKm)],
+            ['Pickup', f.day(l.pickup.from) + ', ' + f.time(l.pickup.from) +
+              (l.pickup.flexible ? ' <span class="chip chip-xs">±' + l.pickup.flexDays + 'd</span>' : '')],
+            l.deliverBy ? ['Deliver by', f.day(l.deliverBy) + ', ' + f.time(l.deliverBy)] : null,
+            ['Auction', l.mode === 'blind' ? 'Sealed bids' : 'Open (reverse)'],
+            l.ceiling ? ['Ceiling', f.money(l.ceiling)] : null,
+            ['Pickup', esc(l.origin.address || l.origin.city) + (l.origin.pincode ? ' · ' + esc(l.origin.pincode) : '')],
+            ['Drop', esc(l.destination.address || l.destination.city) + (l.destination.pincode ? ' · ' + esc(l.destination.pincode) : '')]
+          ]) +
+        '</div>';
+
+      /* ---- aside: shipper ---- */
+      var shipperCard =
+        '<div class="card"><h3 style="font-size:1rem;margin-bottom:.75rem">Shipper</h3>' +
+          '<div class="row" style="gap:.75rem;align-items:center">' + ui.avatar(shipper ? shipper.name : 'Shipper', l.shipperId) +
+            '<div style="min-width:0"><div style="font-weight:600">' + esc(shipper ? (shipper.company || shipper.name) : 'Shipper') + '</div>' +
+            '<div class="t-small">' + esc(shipper ? (shipper.name + (shipper.city ? ' · ' + shipper.city : '')) : '') + '</div></div>' +
+          '</div>' +
+          '<a class="btn btn-outline btn-block" style="margin-top:.85rem" href="messages.html?load=' + l.id + '&t=' + me.id + '"><i class="ri-chat-3-line"></i>Message shipper</a>' +
+        '</div>';
+
+      ctx.main.innerHTML =
+        '<nav class="breadcrumb"><a href="marketplace.html">Marketplace</a><i class="ri-arrow-right-s-line"></i><span>' + l.id + '</span></nav>' +
+
+        '<div class="page-head"><div class="page-head-text">' +
+          '<h2>' + ui.route(l) + '</h2>' +
+          '<p class="t-lead">' + esc(l.title || l.material.name) + ' · ' + f.tons(l.material.weightTons) + ' · ' + esc(tt.label) + '</p>' +
+        '</div><div class="page-actions">' + ui.statusChip(l.status) +
+          '<span class="fit-badge fit-' + CB.score.band(fit.score).key + '"><i class="ri-focus-3-line"></i>' + fit.score + ' · ' + esc(band.label) + '</span>' +
+        '</div></div>' +
+
+        mainTop +
+
+        '<div class="split" style="margin-top:var(--s-5)">' +
+          '<div class="section-block">' +
+            myBidHtml +
+            fitCard +
+            bidsHtml +
+          '</div>' +
+          '<div class="split-aside">' + guideCard + backhaulCard + detailCard + shipperCard + '</div>' +
+        '</div>';
+
+      ui.startCountdowns();
+    }
+
+    /* ---- pieces ---- */
+    function bidPromptCard(l, guide) {
+      return '<div class="card card-accent">' +
+        '<div class="row-between" style="gap:1rem;flex-wrap:wrap;align-items:center">' +
+          '<div><p class="t-eyebrow" style="color:var(--accent-deeper)">You haven’t bid yet</p>' +
+            '<div style="font-weight:650;font-size:1.0625rem;margin-top:.15rem">Typical for this lane is ' + f.money(guide.base) + '</div>' +
+            '<p class="t-small">' + (l.mode === 'blind' ? 'Sealed auction — bid your best number.' : 'Open auction — undercut the leader to take pole position.') + '</p></div>' +
+          '<button class="btn js-place-bid"><i class="ri-price-tag-3-line"></i>Place a bid</button>' +
+        '</div></div>';
+    }
+
+    function myBidCard(b, l) {
+      var st = CB.BID_STATUS[b.status] || {};
+      var truck = b.truckId ? q.truck(b.truckId) : null;
+      var last = lastCounter(b);
+      var canRespond = l.status === 'open' || l.status === 'closed';
+      var pendingShipper = last && last.by === 'shipper' && last.state === 'pending' && canRespond;
+      var histVals = (b.history || []).map(function (h) { return h.amount; }).concat([b.amount]);
+
+      var counterBlock = '';
+      if (last) {
+        if (pendingShipper) {
+          counterBlock =
+            '<div class="notice notice-warn" style="margin-top:.85rem"><i class="ri-arrow-left-right-line"></i>' +
+              '<div><strong>Shipper countered at ' + f.money(last.amount) + '</strong>' +
+              (last.pickupAt ? ' · pickup ' + f.datetime(last.pickupAt) : '') +
+              (last.note ? '<br>“' + esc(last.note) + '”' : '') +
+              '<div class="row" style="gap:.5rem;margin-top:.75rem;flex-wrap:wrap">' +
+                '<button class="btn btn-sm js-counter-accept"><i class="ri-check-line"></i>Accept ' + f.money(last.amount) + '</button>' +
+                '<button class="btn btn-sm btn-outline js-counter-back"><i class="ri-arrow-left-right-line"></i>Counter back</button>' +
+                '<button class="btn btn-sm btn-quiet js-counter-decline">Decline</button>' +
+              '</div></div></div>';
+        } else {
+          var map = { pending: ['chip-warn', 'awaiting reply'], accepted: ['chip-ok', 'accepted'], declined: ['chip', 'declined'] };
+          var mm = map[last.state] || map.pending;
+          counterBlock = '<p style="margin-top:.6rem"><span class="chip chip-xs ' + mm[0] + '"><i class="ri-arrow-left-right-line"></i>' +
+            (last.by === 'transporter' ? 'Your counter ' : 'Counter ') + mm[1] + ' · ' + f.money(last.amount) + '</span></p>';
+        }
+      }
+
+      return '<div class="card card-accent">' +
+        '<div class="row-between" style="align-items:flex-start;gap:1rem">' +
+          '<div><p class="t-eyebrow" style="color:var(--accent-deeper)">Your bid</p>' +
+            '<div class="t-num" style="font-size:1.6rem;font-weight:650;letter-spacing:-.02em">' + f.money(b.amount) + '</div>' +
+            '<p class="t-small">' + f.perKm(b.amount, l.distanceKm) + (truck ? ' · ' + esc(truck.regNo) + ' · ' + f.tons(truck.capacityTons) : '') + ' · pickup in ' + f.hours(b.etaPickupHrs) + '</p></div>' +
+          '<span class="chip ' + (st.chip || 'chip') + '">' + esc(st.label || b.status) + '</span>' +
+        '</div>' +
+        (histVals.length > 1 ? '<div class="row" style="gap:.6rem;align-items:center;margin-top:.6rem">' + ui.sparkline(histVals, { width: 150, height: 30 }) +
+          '<span class="t-small">' + (histVals.length - 1) + ' revision' + ((histVals.length - 1) === 1 ? '' : 's') + ' · started ' + f.money(histVals[0]) + '</span></div>' : '') +
+        (b.note ? '<p class="t-small" style="margin-top:.6rem;font-style:italic">“' + esc(b.note) + '”</p>' : '') +
+        counterBlock +
+        (l.status === 'open'
+          ? '<div class="row" style="gap:.5rem;margin-top:.85rem;flex-wrap:wrap">' +
+              '<button class="btn btn-sm js-place-bid"><i class="ri-edit-line"></i>Update bid</button>' +
+              '<button class="btn btn-sm btn-outline js-withdraw"><i class="ri-close-line"></i>Withdraw</button>' +
+              '<a class="btn btn-sm btn-quiet" href="messages.html?load=' + l.id + '&t=' + me.id + '"><i class="ri-chat-3-line"></i>Message shipper</a>' +
+            '</div>' : '') +
+      '</div>';
+    }
+
+    function bidsBlock(l, bids) {
+      if (l.mode === 'blind') {
+        return '<div class="card"><div class="block-head"><h3 style="font-size:1rem">Sealed auction</h3>' +
+          '<span class="chip chip-xs chip-accent"><i class="ri-eye-off-line"></i>' + bids.length + ' bid' + (bids.length === 1 ? '' : 's') + '</span></div>' +
+          '<p class="t-small">This shipper chose sealed bids. You can’t see rivals’ numbers and they can’t see yours — the shipper weighs price against reliability when they award.</p></div>';
+      }
+      if (!bids.length) return '';
+      var rows = bids.map(function (b, i) {
+        var c = q.transporterCard(b.transporterId);
+        var mine = b.transporterId === me.id;
+        var stc = mine ? (CB.BID_STATUS[b.status] || {}) : null;
+        return '<div class="bid-row' + (mine ? ' is-mine' : '') + '">' +
+          '<div class="bid-rank">#' + (i + 1) + '</div>' +
+          '<div class="bid-main">' +
+            '<div class="bid-name">' + ui.avatar(mine ? me.name : 'Carrier', b.transporterId, 'sm') +
+              (mine ? '<strong>You</strong>' : 'Verified carrier') +
+              (stc ? ' <span class="chip chip-xs ' + stc.chip + '">' + stc.label + '</span>' : '') + '</div>' +
+            '<div class="bid-meta">' +
+              '<span><i class="ri-time-line"></i>pickup in ' + f.hours(b.etaPickupHrs) + '</span>' +
+              (c ? '<span><i class="ri-shield-check-line"></i>' + c.reliability + ' reliability</span>' : '') +
+            '</div>' +
+          '</div>' +
+          '<div class="bid-price"><div class="bid-amount">' + f.money(b.amount) + '</div>' +
+            '<div class="bid-per">' + f.perKm(b.amount, l.distanceKm) + '</div></div>' +
+        '</div>';
+      }).join('');
+      return '<div class="block-head" style="margin-top:var(--s-2)"><h3>' + bids.length + ' live bid' + (bids.length === 1 ? '' : 's') + '</h3>' +
+        '<span class="t-small">lowest first</span></div>' +
+        '<div class="bidlist">' + rows + '</div>';
+    }
+  }());
+  </script>
+</body>
+</html>

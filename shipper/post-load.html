@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Post a load · CargoBid</title>
+  <meta name="theme-color" content="#F4F6FD">
+  <link rel="icon" href="../assets/img/logo.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300..700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.css" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/base.css">
+  <link rel="stylesheet" href="../assets/css/app.css">
+</head>
+<body>
+  <a class="skip-link" href="#app-main">Skip to content</a>
+  <div class="grain" aria-hidden="true"></div>
+
+  <script src="../assets/js/core.js"></script>
+  <script src="../assets/js/match.js"></script>
+  <script src="../assets/js/seed.js"></script>
+  <script src="../assets/js/sim.js"></script>
+  <script src="../assets/js/ui.js"></script>
+  <script src="../assets/js/console.js"></script>
+  <script src="../assets/js/shell.js"></script>
+  <script>
+  (function () {
+    'use strict';
+    var dom = CB.dom, esc = CB.util.esc, f = CB.fmt, ui = CB.ui, act = CB.act;
+    var step = 0;
+    var STEPS = [
+      { n: 'Route', icon: 'ri-map-pin-line' },
+      { n: 'Cargo', icon: 'ri-box-3-line' },
+      { n: 'Schedule & auction', icon: 'ri-auction-line' },
+      { n: 'Review & post', icon: 'ri-send-plane-line' }
+    ];
+
+    var ctx = CB.shell.mount({ role: 'shipper', nav: 'loads', title: 'Post a load', live: false, render: renderShell });
+    if (!ctx) return;
+
+    function pad(n) { return String(n).padStart(2, '0'); }
+    function toInput(ms) {
+      var dt = new Date(ms);
+      return dt.getFullYear() + '-' + pad(dt.getMonth() + 1) + '-' + pad(dt.getDate()) + 'T' + pad(dt.getHours()) + ':' + pad(dt.getMinutes());
+    }
+    function toMs(v) { return v ? new Date(v).getTime() : null; }
+
+    var now = CB.clock.now();
+    var dFrom = new Date(now); dFrom.setDate(dFrom.getDate() + 1); dFrom.setHours(9, 0, 0, 0);
+    var dTo = new Date(dFrom.getTime()); dTo.setHours(13, 0, 0, 0);
+    var dDeliver = new Date(now); dDeliver.setDate(dDeliver.getDate() + 3); dDeliver.setHours(18, 0, 0, 0);
+
+    function field(label, inner, hint) {
+      return '<div class="field"><label>' + esc(label) + '</label>' + inner +
+        (hint ? '<p class="field-hint t-small">' + esc(hint) + '</p>' : '') + '</div>';
+    }
+
+    /* ---- panels --------------------------------------------------------- */
+    function panelRoute() {
+      return '<div class="wizard-panel" data-panel="0">' +
+        '<h3>Where is it going?</h3><p class="t-small">Pick the corridor. We match carriers by lane and service radius.</p>' +
+        '<div class="form-grid" style="margin-top:1.25rem">' +
+          '<div class="col-2">' +
+            field('Pickup city', ui.citySelect('originCity', 'Jaipur')) +
+            field('Delivery city', ui.citySelect('destCity', 'Delhi')) +
+          '</div>' +
+          field('Pickup address', '<input class="input" name="originAddr" placeholder="Plot / area / landmark">') +
+          '<div class="col-2">' +
+            field('Pickup pincode', '<input class="input" name="originPin" inputmode="numeric" placeholder="302013">') +
+            field('Delivery pincode', '<input class="input" name="destPin" inputmode="numeric" placeholder="110044">') +
+          '</div>' +
+          field('Delivery address', '<input class="input" name="destAddr" placeholder="Warehouse / yard / gate">') +
+        '</div>' +
+        '<div id="route-note" class="notice notice-info" style="margin-top:1.25rem"><i class="ri-route-line"></i><div>Select two cities to estimate the distance.</div></div>' +
+      '</div>';
+    }
+
+    function panelCargo() {
+      var flags = CB.MATERIAL_FLAGS.map(function (fl) {
+        return '<button type="button" class="chip-toggle" data-flag="' + fl.key + '" aria-pressed="false">' +
+          '<i class="' + fl.icon + '"></i>' + esc(fl.label) + '</button>';
+      }).join('');
+      var trucks = CB.TRUCK_TYPES.map(function (t, i) {
+        return '<button type="button" class="opt" data-group="truckType" data-value="' + t.key + '" aria-pressed="' + (i === 0) + '">' +
+          '<i class="' + t.icon + '"></i>' +
+          '<strong>' + esc(t.label) + '</strong>' +
+          '<small>₹' + t.ratePerKm + '/km base</small></button>';
+      }).join('');
+      return '<div class="wizard-panel" data-panel="1" hidden>' +
+        '<h3>What are you shipping?</h3><p class="t-small">The material and weight decide which trucks can carry it.</p>' +
+        '<div class="form-grid" style="margin-top:1.25rem">' +
+          '<div class="col-2">' +
+            field('Material', '<input class="input" name="matName" placeholder="e.g. TMT steel bars">') +
+            field('Category', '<input class="input" name="matCat" placeholder="e.g. Steel & metals">') +
+          '</div>' +
+          '<div class="col-2">' +
+            field('Total weight (tonnes)', '<input class="input" name="tons" type="number" min="0.5" step="0.5" value="18">') +
+            field('Dimensions / notes', '<input class="input" name="dims" placeholder="e.g. 12 m bundles, crane loaded">') +
+          '</div>' +
+          field('Handling', '<div class="row" style="flex-wrap:wrap;gap:.5rem" id="pl-flags">' + flags + '</div>') +
+          field('Truck type', '<div class="opt-grid">' + trucks + '</div><input type="hidden" name="truckType" value="open">') +
+          '<div class="col-2">' +
+            field('Min truck capacity (t)', '<input class="input" name="minCap" type="number" min="1" step="1" value="21">') +
+            field('Trucks needed', '<input class="input" name="count" type="number" min="1" step="1" value="1">') +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    }
+
+    function panelSchedule() {
+      var modes = [
+        { v: 'open', icon: 'ri-eye-line', label: 'Open reverse auction', blurb: 'Carriers see the leading rate and undercut it. Best price on busy lanes.' },
+        { v: 'blind', icon: 'ri-eye-off-line', label: 'Sealed bids', blurb: 'Nobody sees the others. Fairer for thin lanes and specialised cargo.' }
+      ].map(function (mm, i) {
+        return '<button type="button" class="opt" data-group="mode" data-value="' + mm.v + '" aria-pressed="' + (i === 0) + '">' +
+          '<i class="' + mm.icon + '"></i>' +
+          '<strong>' + esc(mm.label) + '</strong>' +
+          '<small>' + esc(mm.blurb) + '</small></button>';
+      }).join('');
+      return '<div class="wizard-panel" data-panel="2" hidden>' +
+        '<h3>When, and how should carriers bid?</h3><p class="t-small">Set the pickup window and how long the auction runs.</p>' +
+        '<div class="form-grid" style="margin-top:1.25rem">' +
+          '<div class="col-2">' +
+            field('Pickup from', '<input class="input" name="pickFrom" type="datetime-local" value="' + toInput(dFrom.getTime()) + '">') +
+            field('Pickup by', '<input class="input" name="pickTo" type="datetime-local" value="' + toInput(dTo.getTime()) + '">') +
+          '</div>' +
+          '<div class="col-2">' +
+            field('Deliver by', '<input class="input" name="deliverBy" type="datetime-local" value="' + toInput(dDeliver.getTime()) + '">') +
+            field('Flexible pickup?', '<label class="row" style="gap:.5rem;cursor:pointer"><input type="checkbox" name="flexible"><span class="t-small">Allow ± a few days</span></label>' +
+              '<input class="input" name="flexDays" type="number" min="0" max="5" value="1" style="margin-top:.5rem">') +
+          '</div>' +
+          field('Bidding style', '<div class="opt-grid">' + modes + '</div><input type="hidden" name="mode" value="open">') +
+          '<div class="col-2">' +
+            field('Bid window', '<select class="select" name="bidWindow"><option value="2">2 hours</option><option value="4">4 hours</option><option value="6" selected>6 hours</option><option value="12">12 hours</option><option value="24">24 hours</option></select>') +
+            field('Ceiling price (optional)', '<input class="input" name="ceiling" type="number" min="0" step="500" placeholder="Reject bids above this">', 'Bids over the ceiling are rejected automatically.') +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    }
+
+    function panelReview() {
+      return '<div class="wizard-panel" data-panel="3" hidden>' +
+        '<h3>Ready to post</h3><p class="t-small">Check the details. You can still edit any step before posting.</p>' +
+        '<div id="pl-review" style="margin-top:1.25rem"></div>' +
+      '</div>';
+    }
+
+    /* ---- shell ---------------------------------------------------------- */
+    function renderShell(ctx) {
+      ctx.main.innerHTML =
+        '<nav class="breadcrumb"><a href="loads.html">My loads</a><i class="ri-arrow-right-s-line"></i><span>Post a load</span></nav>' +
+        '<div class="page-head"><div class="page-head-text"><h2>Post a load</h2>' +
+          '<p class="t-lead">Four quick steps. Matching carriers get pinged the moment you post.</p></div></div>' +
+
+        '<div class="wizard">' +
+          '<aside><ol class="steps" id="pl-steps">' +
+            STEPS.map(function (s, i) {
+              return '<li class="step' + (i === 0 ? ' is-active' : '') + '" data-step="' + i + '">' +
+                '<span class="step-num"><i class="' + s.icon + '"></i></span>' +
+                '<span class="step-label">' + esc(s.n) + '</span></li>';
+            }).join('') +
+          '</ol>' +
+          '<div class="card" style="margin-top:1rem;background:var(--accent-wash);border-color:transparent">' +
+            '<p class="t-small"><i class="ri-shield-check-line" style="color:var(--accent-deep)"></i> This is a demo. Posting creates a live auction in your browser only — no real carriers are contacted.</p>' +
+          '</div></aside>' +
+
+          '<form id="pl-form" novalidate autocomplete="off">' +
+            panelRoute() + panelCargo() + panelSchedule() + panelReview() +
+            '<div class="wizard-foot">' +
+              '<button type="button" class="btn btn-outline" id="pl-back" hidden><i class="ri-arrow-left-line"></i>Back</button>' +
+              '<div style="margin-left:auto;display:flex;gap:.5rem">' +
+                '<a class="btn btn-quiet" href="loads.html">Cancel</a>' +
+                '<button type="button" class="btn" id="pl-next">Next<i class="ri-arrow-right-line"></i></button>' +
+                '<button type="submit" class="btn" id="pl-post" hidden><i class="ri-send-plane-fill"></i>Post load</button>' +
+              '</div>' +
+            '</div>' +
+          '</form>' +
+        '</div>';
+
+      var form = dom.$('#pl-form', ctx.main);
+      ui.bindToggles(dom.$('#pl-flags', form));
+
+      /* opt-group radios (truck type, mode) */
+      dom.on(form, 'click', '.opt', function () {
+        var group = this.getAttribute('data-group');
+        dom.$$('.opt[data-group="' + group + '"]', form).forEach(function (o) { o.setAttribute('aria-pressed', 'false'); });
+        this.setAttribute('aria-pressed', 'true');
+        var hid = dom.$('input[name="' + group + '"]', form);
+        if (hid) hid.value = this.getAttribute('data-value');
+        if (group === 'truckType') {
+          var minCap = dom.$('input[name="minCap"]', form);
+          var tons = Number(dom.$('input[name="tons"]', form).value) || 0;
+          if (minCap && tons) minCap.value = Math.max(Number(minCap.value) || 0, Math.ceil(tons));
+        }
+      });
+
+      /* live distance estimate on step 1 */
+      dom.on(form, 'change', 'select[name="originCity"],select[name="destCity"]', updateRouteNote);
+      updateRouteNote();
+
+      dom.$('#pl-next', form).addEventListener('click', function () { if (validateStep(step)) go(step + 1); });
+      dom.$('#pl-back', form).addEventListener('click', function () { go(step - 1); });
+      dom.on(form, 'click', '.step', function () {
+        var target = Number(this.getAttribute('data-step'));
+        if (target < step || validateStep(step)) go(target);
+      });
+      form.addEventListener('submit', function (e) { e.preventDefault(); submit(form); });
+
+      go(0);
+    }
+
+    function updateRouteNote() {
+      var form = dom.$('#pl-form', ctx.main);
+      var o = dom.$('select[name="originCity"]', form).value;
+      var dst = dom.$('select[name="destCity"]', form).value;
+      var note = dom.$('#route-note', form);
+      if (!note) return;
+      if (o && dst && o !== dst) {
+        var km = CB.match.roadKm(o, dst);
+        note.className = 'notice notice-ok';
+        note.innerHTML = '<i class="ri-route-line"></i><div><strong>' + esc(o) + ' → ' + esc(dst) + '</strong> · about ' + f.km(km) + ' by road. Transit roughly ' + f.hours(CB.match.transitHours(km)) + '.</div>';
+      } else if (o && dst && o === dst) {
+        note.className = 'notice notice-warn';
+        note.innerHTML = '<i class="ri-error-warning-line"></i><div>Pickup and delivery cities are the same. Pick two different cities.</div>';
+      } else {
+        note.className = 'notice notice-info';
+        note.innerHTML = '<i class="ri-route-line"></i><div>Select two cities to estimate the distance.</div>';
+      }
+    }
+
+    function go(n) {
+      step = Math.max(0, Math.min(STEPS.length - 1, n));
+      var form = dom.$('#pl-form', ctx.main);
+      dom.$$('.wizard-panel', form).forEach(function (p) {
+        p.hidden = Number(p.getAttribute('data-panel')) !== step;
+      });
+      dom.$$('#pl-steps .step', ctx.main).forEach(function (li, i) {
+        li.classList.toggle('is-active', i === step);
+        li.classList.toggle('is-done', i < step);
+      });
+      dom.$('#pl-back', form).hidden = step === 0;
+      dom.$('#pl-next', form).hidden = step === STEPS.length - 1;
+      dom.$('#pl-post', form).hidden = step !== STEPS.length - 1;
+      if (step === STEPS.length - 1) buildReview(form);
+      form.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    }
+
+    function validateStep(n) {
+      var form = dom.$('#pl-form', ctx.main);
+      ui.clearErrors(form);
+      var ok = true;
+      function bad(name, msg) { ui.setError(dom.$('[name="' + name + '"]', form), msg); ok = false; }
+      if (n === 0) {
+        var o = dom.$('[name="originCity"]', form).value, dst = dom.$('[name="destCity"]', form).value;
+        if (!o) bad('originCity', 'Pick a pickup city');
+        if (!dst) bad('destCity', 'Pick a delivery city');
+        if (o && dst && o === dst) bad('destCity', 'Must differ from pickup');
+      } else if (n === 1) {
+        if (!dom.$('[name="matName"]', form).value.trim()) bad('matName', 'What are you shipping?');
+        if (!(Number(dom.$('[name="tons"]', form).value) > 0)) bad('tons', 'Enter a weight');
+      } else if (n === 2) {
+        if (!dom.$('[name="pickFrom"]', form).value) bad('pickFrom', 'Set a pickup time');
+      }
+      if (!ok) CB.toast('Please fix the highlighted fields', 'warn');
+      return ok;
+    }
+
+    function buildReview(form) {
+      var d = ui.serialize(form);
+      var tt = CB.truckType(d.truckType);
+      var km = (d.originCity && d.destCity) ? CB.match.roadKm(d.originCity, d.destCity) : 0;
+      var flagList = CB.MATERIAL_FLAGS.filter(function (fl) { return d.flags && d.flags[fl.key]; })
+        .map(function (fl) { return '<span class="chip chip-xs"><i class="' + fl.icon + '"></i>' + esc(fl.label) + '</span>'; }).join(' ') || '<span class="t-small">None</span>';
+      dom.$('#pl-review', form).innerHTML =
+        '<div class="review-block"><h4>' + esc(d.originCity) + ' → ' + esc(d.destCity) + '</h4>' +
+          '<p class="t-small">' + f.km(km) + ' by road · ' + esc(d.matName || 'Cargo') + ' · ' + f.tons(Number(d.tons) || 0) + '</p></div>' +
+        '<div class="split" style="margin-top:1rem"><div>' +
+          ui.kv([
+            ['Material', esc(d.matName || '—') + (d.matCat ? ' <span class="t-small">· ' + esc(d.matCat) + '</span>' : '')],
+            ['Weight', f.tons(Number(d.tons) || 0)],
+            ['Handling', flagList],
+            ['Truck', (tt ? tt.label : d.truckType) + (Number(d.count) > 1 ? ' × ' + d.count : '')],
+            ['Min capacity', f.tons(Number(d.minCap) || 0)],
+            d.dims ? ['Notes', esc(d.dims)] : null
+          ]) + '</div><div>' +
+          ui.kv([
+            ['Pickup', d.pickFrom ? f.datetime(toMs(d.pickFrom)) : '—'],
+            ['Deliver by', d.deliverBy ? f.datetime(toMs(d.deliverBy)) : 'Not set'],
+            ['Flexible', d.flexible ? '± ' + (d.flexDays || 1) + ' day(s)' : 'Fixed'],
+            ['Auction', d.mode === 'blind' ? 'Sealed bids' : 'Open reverse auction'],
+            ['Bid window', (d.bidWindow || 6) + ' hours'],
+            ['Ceiling', d.ceiling ? f.money(Number(d.ceiling)) : 'None']
+          ]) + '</div></div>';
+    }
+
+    function submit(form) {
+      if (!validateStep(0) || !validateStep(1) || !validateStep(2)) { go(0); return; }
+      var d = ui.serialize(form);
+      var post = dom.$('#pl-post', form);
+      post.disabled = true;
+      var pickFrom = toMs(d.pickFrom);
+      var pickTo = toMs(d.pickTo) || (pickFrom + CB.clock.hours(4));
+      var load = act.postLoad({
+        shipperId: ctx.user.id,
+        title: (d.matName || 'Cargo'),
+        origin: { city: d.originCity, address: d.originAddr, pincode: d.originPin },
+        destination: { city: d.destCity, address: d.destAddr, pincode: d.destPin },
+        material: { name: d.matName, category: d.matCat, weightTons: d.tons, dims: d.dims, flags: d.flags || {} },
+        need: { truckType: d.truckType, minCapacityTons: d.minCap, bodyFt: null, count: d.count },
+        pickup: { from: pickFrom, to: pickTo, flexible: !!d.flexible, flexDays: d.flexDays },
+        deliverBy: toMs(d.deliverBy),
+        mode: d.mode,
+        targetPrice: null,
+        ceiling: d.ceiling || null,
+        bidWindowHrs: d.bidWindow
+      });
+      if (!load || load.error) { post.disabled = false; CB.toast((load && load.error) || 'Could not post load', 'warn'); return; }
+      CB.toast('Load posted · ' + load.notified.length + ' carriers notified', 'truck');
+      window.location.href = 'load.html?id=' + load.id;
+    }
+  }());
+  </script>
+</body>
+</html>

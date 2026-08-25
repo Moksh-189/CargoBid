@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 400" role="img" aria-labelledby="tTrainCargo"><title id="tTrainCargo">Freight train carrying shipping containers</title>
+<g stroke="#14161C" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">
+  <ellipse cx="340" cy="358" rx="300" ry="26" fill="#8DB0F4" opacity="0.18" stroke="none"/>
+
+  <!-- ballast track bed -->
+  <path d="M70 322 L578 208 L616 228 L108 342 Z" fill="#DCE7FD"/>
+
+  <!-- sleepers -->
+  <path d="M123 307 L143 327" />
+  <path d="M192 293 L212 313" />
+  <path d="M261 278 L281 298" />
+  <path d="M330 264 L350 284" />
+  <path d="M399 250 L419 270" />
+  <path d="M468 235 L488 255" />
+  <path d="M537 221 L557 241" />
+
+  <!-- rails -->
+  <path d="M84 315 L576 213 L576 219 L84 321 Z" fill="#3D4354"/>
+  <path d="M104 335 L596 233 L596 239 L104 341 Z" fill="#3D4354"/>
+
+  <!-- locomotive : wheels -->
+  <ellipse cx="460" cy="314" rx="16" ry="10" fill="#2A2F3D"/>
+  <ellipse cx="460" cy="314" rx="8" ry="5" fill="#3D4354"/>
+  <ellipse cx="512" cy="298" rx="16" ry="10" fill="#2A2F3D"/>
+  <ellipse cx="512" cy="298" rx="8" ry="5" fill="#3D4354"/>
+
+  <!-- locomotive : body -->
+  <path d="M366 206 L474 152 L544 186 L436 240 Z" fill="#DCE7FD"/>
+  <path d="M436 240 L544 186 L544 250 L436 304 Z" fill="#8DB0F4"/>
+  <path d="M366 206 L436 240 L436 304 L366 270 Z" fill="#6D97E8"/>
+  <!-- roof vent -->
+  <path d="M404 190 L440 172 L462 183 L426 201 Z" fill="#B9CFF9"/>
+  <!-- yellow body stripe -->
+  <path d="M436 272 L544 218 L544 226 L436 280 Z" fill="#F5C544"/>
+  <!-- cab windows -->
+  <path d="M470 236 L500 221 L500 238 L470 253 Z" fill="#B9CFF9"/>
+  <path d="M476 236 L496 226 L496 232 L476 242 Z" fill="#FFFFFF" opacity="0.45" stroke="none"/>
+  <path d="M508 218 L534 205 L534 222 L508 235 Z" fill="#B9CFF9"/>
+  <path d="M514 218 L530 210 L530 216 L514 224 Z" fill="#FFFFFF" opacity="0.45" stroke="none"/>
+  <!-- headlight -->
+  <ellipse cx="540" cy="234" rx="6" ry="5" fill="#F7D46B"/>
+
+  <!-- coupler to the wagon -->
+  <path d="M352 276 L372 276 L372 282 L352 282 Z" fill="#3D4354"/>
+
+  <!-- wagon : wheels -->
+  <ellipse cx="168" cy="344" rx="15" ry="9" fill="#2A2F3D"/>
+  <ellipse cx="168" cy="344" rx="7" ry="4" fill="#3D4354"/>
+  <ellipse cx="300" cy="300" rx="15" ry="9" fill="#2A2F3D"/>
+  <ellipse cx="300" cy="300" rx="7" ry="4" fill="#3D4354"/>
+
+  <!-- wagon : flat deck -->
+  <path d="M110 300 L286 240 L340 267 L164 327 Z" fill="#B9CFF9"/>
+  <path d="M164 327 L340 267 L340 281 L164 341 Z" fill="#6D97E8"/>
+  <path d="M110 300 L164 327 L164 341 L110 314 Z" fill="#6D97E8"/>
+
+  <!-- container 1 : blue -->
+  <path d="M150 258 L230 232 L270 252 L190 278 Z" fill="#B9CFF9"/>
+  <path d="M190 278 L270 252 L270 288 L190 314 Z" fill="#8DB0F4"/>
+  <path d="M150 258 L190 278 L190 314 L150 294 Z" fill="#6D97E8"/>
+  <path d="M162 284 L162 308" opacity="0.45"/>
+  <path d="M178 290 L178 314" opacity="0.45"/>
+  <path d="M226 262 L226 286" opacity="0.45"/>
+
+  <!-- container 2 : yellow -->
+  <path d="M236 250 L300 229 L332 245 L268 266 Z" fill="#F7D46B"/>
+  <path d="M268 266 L332 245 L332 275 L268 296 Z" fill="#F5C544"/>
+  <path d="M236 250 L268 266 L268 296 L236 280 Z" fill="#DFA92C"/>
+  <path d="M280 272 L280 290" opacity="0.45"/>
+  <path d="M300 262 L300 280" opacity="0.45"/>
+</g>
+</svg>

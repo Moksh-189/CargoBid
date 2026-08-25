@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" role="img" aria-labelledby="tLogo"><title id="tLogo">CargoBid</title>
+<rect x="0" y="0" width="40" height="40" rx="11" ry="11" fill="#14161C"/>
+<path d="M7 14 L23 14 L23 25 L7 25 Z" fill="#FFFFFF"/>
+<path d="M24 17 L29 17 L33 21 L33 25 L24 25 Z" fill="#FFFFFF"/>
+<circle cx="14" cy="28" r="3" fill="#FFFFFF"/>
+<circle cx="28" cy="28" r="3" fill="#FFFFFF"/>
+</svg>

@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 400" role="img" aria-labelledby="tLongTrailer"><title id="tLongTrailer">Long articulated tractor trailer</title>
+<g stroke="#14161C" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">
+  <ellipse cx="380" cy="336" rx="326" ry="44" fill="#8DB0F4" opacity="0.18" stroke="none"/>
+
+  <!-- far-side trailer wheels peeking -->
+  <ellipse cx="150" cy="246" rx="24" ry="15" fill="#2A2F3D"/>
+  <ellipse cx="150" cy="246" rx="13" ry="8" fill="#3D4354"/>
+  <ellipse cx="196" cy="220" rx="24" ry="15" fill="#2A2F3D"/>
+  <ellipse cx="196" cy="220" rx="13" ry="8" fill="#3D4354"/>
+  <ellipse cx="440" cy="180" rx="24" ry="15" fill="#2A2F3D"/>
+  <ellipse cx="440" cy="180" rx="13" ry="8" fill="#3D4354"/>
+
+  <!-- trailer bed volume -->
+  <path d="M74 226 L436 18 L520 66 L158 274 Z" fill="#EEF3FE"/>
+  <path d="M520 66 L520 92 L158 300 L158 274 Z" fill="#DCE7FD"/>
+  <path d="M74 226 L74 252 L158 300 L158 274 Z" fill="#3D4354"/>
+
+  <!-- tarped cargo mass : left/rear face (darkest) -->
+  <path d="M92 216 L92 140 L176 188 L176 264 Z" fill="#6D97E8"/>
+  <!-- tarped cargo mass : near long face (mid) -->
+  <path d="M176 188 L490 6 L490 82 L176 264 Z" fill="#8DB0F4"/>
+  <!-- tarped cargo mass : top face (lightest) -->
+  <path d="M92 140 L406 -42 L490 6 L176 188 Z" fill="#B9CFF9"/>
+
+  <!-- straps over the top : each runs across the top face and down the near face -->
+  <path d="M148 172 L232 220 L232 240 L148 192 Z" fill="#2A2F3D"/>
+  <path d="M148 172 L246 115 L246 135 L148 192 Z" fill="#3D4354"/>
+
+  <path d="M248 114 L332 162 L332 182 L248 134 Z" fill="#2A2F3D"/>
+  <path d="M248 114 L346 57 L346 77 L248 134 Z" fill="#3D4354"/>
+
+  <path d="M348 56 L432 104 L432 124 L348 76 Z" fill="#2A2F3D"/>
+  <path d="M348 56 L446 -1 L446 19 L348 76 Z" fill="#3D4354"/>
+
+  <!-- landing gear legs under the trailer nose -->
+  <path d="M436 118 L436 154" />
+  <path d="M456 130 L456 166" />
+  <path d="M428 152 L444 161 L444 169 L428 160 Z" fill="#3D4354"/>
+  <path d="M448 164 L464 173 L464 181 L448 172 Z" fill="#3D4354"/>
+
+  <!-- mud flaps behind trailer bogie -->
+  <path d="M116 268 L140 254 L140 282 L116 296 Z" fill="#2A2F3D"/>
+
+  <!-- trailer near wheels : rear bogie -->
+  <ellipse cx="180" cy="290" rx="28" ry="18" fill="#2A2F3D"/>
+  <ellipse cx="180" cy="290" rx="15" ry="9" fill="#3D4354"/>
+  <ellipse cx="180" cy="290" rx="6" ry="4" fill="#DCE7FD"/>
+  <ellipse cx="226" cy="264" rx="28" ry="18" fill="#2A2F3D"/>
+  <ellipse cx="226" cy="264" rx="15" ry="9" fill="#3D4354"/>
+  <ellipse cx="226" cy="264" rx="6" ry="4" fill="#DCE7FD"/>
+
+  <!-- tractor unit : sleeper cab volume -->
+  <path d="M520 66 L584 30 L668 78 L604 116 Z" fill="#FFFFFF"/>
+  <path d="M604 116 L668 78 L668 178 L604 216 Z" fill="#DCE7FD"/>
+  <path d="M520 66 L604 116 L604 216 L520 166 Z" fill="#EEF3FE"/>
+  <path d="M562 91 L562 191" opacity="0.45"/>
+
+  <!-- exhaust stack behind the sleeper -->
+  <path d="M524 62 L536 55 L536 4 L524 11 Z" fill="#3D4354"/>
+  <path d="M524 11 L536 4 L548 11 L536 18 Z" fill="#DCE7FD"/>
+
+  <!-- windscreen -->
+  <path d="M612 88 L658 62 L658 96 L612 122 Z" fill="#B9CFF9"/>
+  <path d="M618 90 L652 70 L652 78 L618 98 Z" fill="#FFFFFF" opacity="0.45" stroke="none"/>
+
+  <!-- sleeper side window -->
+  <path d="M534 78 L570 100 L570 128 L534 106 Z" fill="#B9CFF9"/>
+  <path d="M540 84 L564 98 L564 106 L540 92 Z" fill="#FFFFFF" opacity="0.45" stroke="none"/>
+
+  <!-- grille -->
+  <path d="M612 128 L658 102 L658 130 L612 156 Z" fill="#2A2F3D"/>
+  <path d="M618 134 L652 114" opacity="0.45"/>
+  <path d="M618 144 L652 124" opacity="0.45"/>
+
+  <!-- chrome-ish bumper -->
+  <path d="M608 160 L662 129 L662 152 L608 183 Z" fill="#EEF3FE"/>
+  <path d="M604 186 L662 152 L662 166 L604 200 Z" fill="#DCE7FD"/>
+
+  <!-- side mirror -->
+  <path d="M608 84 L626 74" />
+  <path d="M622 64 L636 56 L636 76 L622 84 Z" fill="#3D4354"/>
+
+  <!-- tractor mud flap -->
+  <path d="M486 196 L510 182 L510 208 L486 222 Z" fill="#2A2F3D"/>
+
+  <!-- wheel arches -->
+  <path d="M488 202 L506 192 L526 192 L544 202" fill="none"/>
+  <path d="M576 186 L594 176 L614 176 L632 186" fill="none"/>
+
+  <!-- tractor near wheels : drive axle pair + steer axle -->
+  <ellipse cx="470" cy="222" rx="28" ry="18" fill="#2A2F3D"/>
+  <ellipse cx="470" cy="222" rx="15" ry="9" fill="#3D4354"/>
+  <ellipse cx="470" cy="222" rx="6" ry="4" fill="#DCE7FD"/>
+  <ellipse cx="516" cy="196" rx="28" ry="18" fill="#2A2F3D"/>
+  <ellipse cx="516" cy="196" rx="15" ry="9" fill="#3D4354"/>
+  <ellipse cx="516" cy="196" rx="6" ry="4" fill="#DCE7FD"/>
+  <ellipse cx="604" cy="204" rx="28" ry="18" fill="#2A2F3D"/>
+  <ellipse cx="604" cy="204" rx="15" ry="9" fill="#3D4354"/>
+  <ellipse cx="604" cy="204" rx="6" ry="4" fill="#DCE7FD"/>
+
+  <!-- headlamp -->
+  <ellipse cx="650" cy="112" rx="7" ry="5" fill="#F7D46B"/>
+</g>
+</svg>

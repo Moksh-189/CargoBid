@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Return loads · CargoBid</title>
+  <meta name="theme-color" content="#F4F6FD">
+  <link rel="icon" href="../assets/img/logo.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300..700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.css" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/base.css">
+  <link rel="stylesheet" href="../assets/css/app.css">
+</head>
+<body>
+  <a class="skip-link" href="#app-main">Skip to content</a>
+  <div class="grain" aria-hidden="true"></div>
+
+  <script src="../assets/js/core.js"></script>
+  <script src="../assets/js/match.js"></script>
+  <script src="../assets/js/seed.js"></script>
+  <script src="../assets/js/sim.js"></script>
+  <script src="../assets/js/ui.js"></script>
+  <script src="../assets/js/console.js"></script>
+  <script src="../assets/js/shell.js"></script>
+  <script>
+  (function () {
+    'use strict';
+    var dom = CB.dom, esc = CB.util.esc, f = CB.fmt, q = CB.q, ui = CB.ui, match = CB.match;
+
+    var ctx = CB.shell.mount({ role: 'transporter', nav: 'returns', title: 'Return loads', live: true, render: render });
+    if (!ctx) return;
+    var me = ctx.user;
+
+    function safe(fn, d) { try { var v = fn(); return v == null ? d : v; } catch (e) { return d; } }
+
+    function returnCard(row) {
+      var l = row.load, bh = row.backhaul, fit = row.fit;
+      var tt = CB.truckType(l.need.truckType);
+      var guide = match.priceGuide(l);
+      var myBid = q.myBidOn(l.id, me.id);
+      var low = q.lowestBid(l.id);
+      var band = match.fitBand(fit.score);
+
+      var priceBit = myBid
+        ? '<span class="chip chip-xs chip-accent"><i class="ri-price-tag-3-line"></i>You bid ' + f.money(myBid.amount) + '</span>'
+        : (l.mode === 'blind'
+            ? '<span class="t-small">Sealed · typical ' + f.money(guide.base) + '</span>'
+            : (low ? '<strong class="t-num">' + f.money(low.amount) + '</strong> <span class="t-small">leading</span>'
+                   : '<span class="t-small">Typical ' + f.money(guide.base) + '</span>'));
+
+      return '<a class="card card-lift" href="load.html?id=' + l.id + '">' +
+        '<div class="load-card">' +
+          '<div class="load-card-top">' +
+            '<div><div class="load-card-route">' + ui.route(l) + '</div>' +
+              '<p class="t-small" style="margin-top:.25rem">' + esc(l.material.name) + ' · ' + f.tons(l.material.weightTons) + ' · ' + esc(tt.label) + '</p></div>' +
+            '<span class="chip chip-ok"><i class="ri-arrow-go-back-line"></i>' + bh.coverage + '% home</span>' +
+          '</div>' +
+          '<div class="backhaul-note"><i class="ri-days-line"></i><div>Drops you within <strong>' + f.km(bh.dropsWithinKm) + '</strong> of ' + esc(bh.homeBase) +
+            ' — covers <strong>' + bh.coverage + '%</strong> of the ' + f.km(bh.deadHeadKm) + ' empty run home and saves about <strong>' + f.money(bh.deadHeadCost) + '</strong> in dead-head diesel.</div></div>' +
+          '<div class="load-card-body">' +
+            '<span class="chip chip-xs"><i class="ri-route-line"></i>' + f.km(l.distanceKm) + ' loaded</span>' +
+            '<span class="chip chip-xs"><i class="ri-map-pin-range-line"></i>' + f.km(bh.closerBy) + ' closer</span>' +
+            '<span class="fit-badge fit-' + CB.score.band(fit.score).key + '"><i class="ri-focus-3-line"></i>' + fit.score + ' · ' + esc(band.label) + '</span>' +
+          '</div>' +
+          '<div class="load-card-foot"><span>' + priceBit + '</span>' + ui.countdown(l.bidCloseAt, 'Closes ') + '</div>' +
+        '</div></a>';
+    }
+
+    function render(ctx) {
+      var tp = q.transporter(me.id) || {};
+      var away = tp.currentCity && tp.currentCity !== tp.homeBase;
+      var rows = safe(function () { return match.returnLoadsFor(me.id); }, []);
+
+      var saved = rows.reduce(function (s, r) { return s + (r.backhaul.deadHeadCost || 0); }, 0);
+
+      ctx.main.innerHTML =
+        '<div class="page-head"><div class="page-head-text">' +
+          '<h2>Return loads</h2>' +
+          '<p class="t-lead">Loads that carry your fleet back toward ' + esc(tp.homeBase || 'home') + ' — turning an empty return leg into paid kilometres.</p>' +
+        '</div><div class="page-actions">' +
+          '<a class="btn btn-outline" href="marketplace.html"><i class="ri-search-line"></i>All loads</a>' +
+        '</div></div>' +
+
+        (!away
+          ? '<div class="notice notice-info" style="margin-bottom:var(--s-4)"><i class="ri-home-4-line"></i>' +
+              '<div><strong>Your fleet is based at home in ' + esc(tp.homeBase || '—') + '.</strong> Return loads appear when your trucks finish a delivery away from base — the moment a dead-head home would otherwise cost you. ' +
+              'Use the location chip at the top to place your fleet in another city and see backhaul in action.</div></div>'
+          : '<div class="notice notice-ok" style="margin-bottom:var(--s-4)"><i class="ri-arrow-go-back-line"></i>' +
+              '<div><strong>Your fleet is in ' + esc(tp.currentCity) + ', ' + f.km(Math.round((match.cityKm(tp.currentCity, tp.homeBase) || 0) * match.ROAD_FACTOR)) + ' from ' + esc(tp.homeBase) + '.</strong> ' +
+              (rows.length
+                ? rows.length + ' open load' + (rows.length === 1 ? '' : 's') + ' would take you home loaded — bidding one recovers up to ' + f.money(saved) + ' you would otherwise burn running empty.'
+                : 'No open loads head your way right now. Check the full marketplace, or widen your radius from the location chip.') +
+              '</div></div>') +
+
+        (rows.length
+          ? '<div class="cards cards-lg">' + rows.map(returnCard).join('') + '</div>'
+          : (away
+              ? ui.empty('ri-arrow-go-back-line', 'No return loads yet',
+                  'Nothing currently routes from ' + esc(tp.currentCity) + ' back toward ' + esc(tp.homeBase) + '. New loads arrive constantly — or browse everything on the marketplace.',
+                  '<a class="btn" href="marketplace.html"><i class="ri-search-line"></i>Browse all loads</a>')
+              : ui.empty('ri-map-pin-range-line', 'Place your fleet to begin',
+                  'Set a current city other than your home base using the location chip up top. Any load heading home then shows here with its dead-head savings.',
+                  '<a class="btn btn-outline" href="marketplace.html"><i class="ri-search-line"></i>Meanwhile, browse loads</a>')));
+
+      ui.startCountdowns();
+    }
+  }());
+  </script>
+</body>
+</html>

@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 400" role="img" aria-labelledby="tTipper"><title id="tTipper">Tipper dump truck</title>
+<g stroke="#14161C" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">
+  <ellipse cx="300" cy="344" rx="224" ry="40" fill="#8DB0F4" opacity="0.18" stroke="none"/>
+
+  <!-- far-side wheel peeking behind the near-left wall -->
+  <ellipse cx="212" cy="300" rx="22" ry="14" fill="#2A2F3D"/>
+  <ellipse cx="212" cy="300" rx="12" ry="7" fill="#3D4354"/>
+
+  <!-- slim chassis rail under the bed -->
+  <path d="M250 318 L440 292 L440 302 L250 328 Z" fill="#2A2F3D"/>
+
+  <!-- dump bed cavity (open top, raised at the cab end) -->
+  <path d="M132 212 L292 104 L384 156 L224 262 Z" fill="#2A2F3D"/>
+
+  <!-- heaped aggregate spilling toward the low rear-left -->
+  <ellipse cx="225" cy="192" rx="36" ry="21" fill="#3D4354"/>
+  <ellipse cx="262" cy="182" rx="28" ry="16" fill="#2A2F3D"/>
+  <ellipse cx="198" cy="196" rx="24" ry="14" fill="#3D4354"/>
+  <ellipse cx="240" cy="168" rx="22" ry="13" fill="#2A2F3D"/>
+  <ellipse cx="210" cy="184" rx="6" ry="4" fill="#DCE7FD" stroke="none"/>
+  <ellipse cx="250" cy="190" rx="5" ry="3" fill="#B9CFF9" stroke="none"/>
+  <ellipse cx="232" cy="176" rx="5" ry="3" fill="#DCE7FD" stroke="none"/>
+
+  <!-- bed near-right wall (mid) + near-left wall (dark), construction yellow -->
+  <path d="M224 262 L384 156 L384 220 L224 326 Z" fill="#F5C544"/>
+  <path d="M224 262 L132 212 L132 276 L224 326 Z" fill="#DFA92C"/>
+  <path d="M224 288 L384 182" opacity="0.45"/>
+  <path d="M180 240 L180 300" opacity="0.45"/>
+
+  <!-- tailgate hinged open at the rear-left -->
+  <path d="M132 212 L96 232 L96 268 L132 248 Z" fill="#DFA92C"/>
+  <path d="M114 222 L114 258" opacity="0.45"/>
+
+  <!-- hydraulic ram lifting the bed -->
+  <path d="M318 262 L350 200 L362 204 L330 266 Z" fill="#3D4354"/>
+  <path d="M326 258 L354 204" opacity="0.45"/>
+
+  <!-- cab : top / right face / left face -->
+  <path d="M388 182 L452 148 L508 180 L444 214 Z" fill="#FFFFFF"/>
+  <path d="M444 214 L508 180 L508 240 L444 274 Z" fill="#DCE7FD"/>
+  <path d="M388 182 L444 214 L444 274 L388 242 Z" fill="#EEF3FE"/>
+
+  <!-- windscreen -->
+  <path d="M452 186 L500 160 L500 190 L452 216 Z" fill="#B9CFF9"/>
+  <path d="M458 188 L494 168 L494 176 L458 196 Z" fill="#FFFFFF" opacity="0.45" stroke="none"/>
+
+  <!-- side window -->
+  <path d="M398 190 L434 210 L434 234 L398 214 Z" fill="#B9CFF9"/>
+  <path d="M404 196 L428 210 L428 218 L404 204 Z" fill="#FFFFFF" opacity="0.45" stroke="none"/>
+
+  <!-- grille / lower front -->
+  <path d="M452 220 L500 194 L500 216 L452 242 Z" fill="#2A2F3D"/>
+  <path d="M452 246 L500 220 L500 234 L452 260 Z" fill="#3D4354"/>
+
+  <!-- side mirror -->
+  <path d="M448 182 L466 172"/>
+  <path d="M462 164 L476 156 L476 174 L462 182 Z" fill="#3D4354"/>
+
+  <!-- wheel arches -->
+  <path d="M258 312 L276 302 L332 302 L350 312" fill="none"/>
+  <path d="M396 288 L414 278 L434 278 L452 288" fill="none"/>
+
+  <!-- dual rear wheels + front wheel -->
+  <ellipse cx="286" cy="312" rx="28" ry="18" fill="#2A2F3D"/>
+  <ellipse cx="286" cy="312" rx="15" ry="9" fill="#3D4354"/>
+  <ellipse cx="286" cy="312" rx="6" ry="4" fill="#DCE7FD"/>
+
+  <ellipse cx="322" cy="304" rx="28" ry="18" fill="#2A2F3D"/>
+  <ellipse cx="322" cy="304" rx="15" ry="9" fill="#3D4354"/>
+  <ellipse cx="322" cy="304" rx="6" ry="4" fill="#DCE7FD"/>
+
+  <ellipse cx="424" cy="288" rx="28" ry="18" fill="#2A2F3D"/>
+  <ellipse cx="424" cy="288" rx="15" ry="9" fill="#3D4354"/>
+  <ellipse cx="424" cy="288" rx="6" ry="4" fill="#DCE7FD"/>
+
+  <!-- headlamp -->
+  <ellipse cx="492" cy="204" rx="7" ry="5" fill="#F7D46B"/>
+
+  <!-- spilled aggregate dumped on the ground at the rear -->
+  <ellipse cx="150" cy="284" rx="12" ry="6" fill="#3D4354"/>
+  <ellipse cx="126" cy="292" rx="9" ry="5" fill="#2A2F3D"/>
+  <ellipse cx="168" cy="292" rx="7" ry="4" fill="#3D4354"/>
+</g>
+</svg>

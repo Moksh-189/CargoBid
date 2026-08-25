@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Messages · CargoBid</title>
+  <meta name="theme-color" content="#F4F6FD">
+  <link rel="icon" href="../assets/img/logo.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300..700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.css" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/base.css">
+  <link rel="stylesheet" href="../assets/css/app.css">
+</head>
+<body>
+  <a class="skip-link" href="#app-main">Skip to content</a>
+  <div class="grain" aria-hidden="true"></div>
+
+  <script src="../assets/js/core.js"></script>
+  <script src="../assets/js/match.js"></script>
+  <script src="../assets/js/seed.js"></script>
+  <script src="../assets/js/sim.js"></script>
+  <script src="../assets/js/ui.js"></script>
+  <script src="../assets/js/console.js"></script>
+  <script src="../assets/js/shell.js"></script>
+  <script>
+  (function () {
+    'use strict';
+    var dom = CB.dom, esc = CB.util.esc, f = CB.fmt, q = CB.q, ui = CB.ui, act = CB.act;
+
+    /* active conversation is keyed by the thread's natural key (loadId + the
+       thread's transporterId), independent of who is viewing. For a transporter
+       viewer, activeTp === me.id — the counterparty is the load's shipper. */
+    var activeLoad = null, activeTp = null;
+    var ROLE = 'transporter';
+
+    var ctx = CB.shell.mount({
+      role: ROLE, nav: 'messages', title: 'Messages',
+      live: false, render: renderShell
+    });
+    if (!ctx) return;
+    var me = ctx.user;
+
+    /* Live: refresh both panes but NEVER the compose form (keeps input focus). */
+    CB.on('change', function () {
+      paintThreads();
+      if (activeTp) { markRead(); paintChat(); }
+    });
+
+    /* ---- role helpers (mirror of the shipper page) ---- */
+    function otherId(th) { return ROLE === 'shipper' ? th.transporterId : th.shipperId; }
+    function otherCardOf(id) {
+      if (!id) return null;
+      if (ROLE === 'shipper') return q.transporterCard(id);
+      var u = q.user(id);
+      return u ? { id: id, name: u.name, company: u.company, city: u.city, verified: true } : null;
+    }
+    /* counterparty id for the active conversation, thread or not */
+    function activeOtherId() {
+      var th = activeThread();
+      if (th) return otherId(th);
+      if (ROLE === 'shipper') return activeTp;
+      var load = q.load(activeLoad);
+      return load ? load.shipperId : null;
+    }
+
+    function activeThread() { return (activeLoad && activeTp) ? q.threadFor(activeLoad, activeTp) : null; }
+
+    /* ==================================================================== */
+    function renderShell(ctx) {
+      var threads = q.threadsOf(me.id);
+
+      /* initial selection: ?load=&t=  → ?t=  → newest thread */
+      var loadParam = CB.param('load'), tParam = CB.param('t');
+      if (loadParam && tParam) { activeLoad = loadParam; activeTp = tParam; }
+      else if (tParam) {
+        var byT = threads.filter(function (th) { return th.transporterId === tParam; })[0];
+        if (byT) { activeLoad = byT.loadId; activeTp = byT.transporterId; }
+      } else if (threads.length) { activeLoad = threads[0].loadId; activeTp = threads[0].transporterId; }
+
+      ctx.main.innerHTML =
+        '<div class="page-head"><div class="page-head-text">' +
+          '<h2>Messages</h2><p class="t-lead">One thread per load — every counter-offer, ETA and handover note with your shippers in one place.</p>' +
+        '</div></div>' +
+        '<div class="card" style="padding:0;overflow:hidden">' +
+          '<div class="chat" id="chat">' +
+            '<div class="thread-list" id="thread-list"></div>' +
+            '<div class="chat-main" id="chat-main">' +
+              '<div class="chat-head" id="chat-head"></div>' +
+              '<div class="chat-scroll" id="chat-scroll"></div>' +
+              '<form class="chat-compose" id="chat-form" autocomplete="off">' +
+                '<textarea class="textarea" id="chat-input" rows="1" placeholder="Write a message…" aria-label="Message"></textarea>' +
+                '<button class="btn" type="submit" id="chat-send" aria-label="Send"><i class="ri-send-plane-fill"></i></button>' +
+              '</form>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+
+      /* stable handlers — form/input are never re-rendered */
+      var form = dom.$('#chat-form', ctx.main);
+      var input = dom.$('#chat-input', ctx.main);
+      form.addEventListener('submit', function (e) { e.preventDefault(); send(); });
+      input.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+      });
+      input.addEventListener('input', function () {
+        input.style.height = 'auto';
+        input.style.height = Math.min(input.scrollHeight, 128) + 'px';
+      });
+
+      /* delegated — thread items + chat head are repainted */
+      dom.on(ctx.main, 'click', '.thread-item', function () {
+        selectThread(this.getAttribute('data-load'), this.getAttribute('data-t'));
+      });
+      dom.on(ctx.main, 'click', '#chat-back', function () {
+        var chat = dom.$('#chat', ctx.main); if (chat) chat.classList.remove('show-thread');
+      });
+
+      paintThreads();
+      markRead();
+      paintChat();
+      if (activeTp) { showThreadPane(true); scrollToBottom(); focusInput(); }
+    }
+
+    /* ---- thread list ---- */
+    function threadItem(th) {
+      var oid = otherId(th), other = otherCardOf(oid);
+      var load = q.load(th.loadId);
+      var msgs = q.messagesIn(th.id);
+      var last = msgs[msgs.length - 1];
+      var unread = msgs.filter(function (m) { return !m.read && m.fromId !== me.id; }).length;
+      var active = th.loadId === activeLoad && th.transporterId === activeTp;
+      var preview = last ? (last.fromId === me.id ? 'You: ' : '') + last.body.replace(/\n/g, ' ') : 'No messages yet';
+      return '<button type="button" class="thread-item' + (active ? ' is-active' : '') + '" data-load="' + th.loadId + '" data-t="' + th.transporterId + '">' +
+        ui.avatar(other ? other.name : 'Shipper', oid) +
+        '<div class="thread-body">' +
+          '<div class="thread-name"><strong>' + esc(other ? (other.company || other.name) : 'Shipper') + '</strong>' +
+            '<time>' + f.relative(th.lastAt) + '</time></div>' +
+          '<p class="thread-preview">' + (load ? esc(load.origin.city + ' → ' + load.destination.city) + ' · ' : '') + esc(preview) + '</p>' +
+        '</div>' +
+        (unread ? '<span class="thread-unread" aria-label="' + unread + ' unread"></span>' : '') +
+      '</button>';
+    }
+
+    function paintThreads() {
+      var box = dom.$('#thread-list', ctx.main);
+      if (!box) return;
+      var threads = q.threadsOf(me.id);
+      box.innerHTML = threads.length
+        ? threads.map(threadItem).join('')
+        : '<div class="pop-empty"><i class="ri-chat-off-line" style="font-size:1.75rem"></i>' +
+          '<p class="t-small" style="margin-top:.5rem">No conversations yet. Message a shipper from any load or trip.</p></div>';
+    }
+
+    /* ---- conversation ---- */
+    function paintChat() {
+      var head = dom.$('#chat-head', ctx.main);
+      var scroll = dom.$('#chat-scroll', ctx.main);
+      var form = dom.$('#chat-form', ctx.main);
+      if (!head || !scroll) return;
+
+      if (!activeTp || !activeLoad) {
+        head.innerHTML = '';
+        scroll.innerHTML = ui.empty('ri-chat-3-line', 'Your messages', 'Pick a conversation on the left, or start one from a load, bid or trip.');
+        if (form) form.style.display = 'none';
+        return;
+      }
+      if (form) form.style.display = '';
+
+      var oid = activeOtherId();
+      var other = otherCardOf(oid);
+      var load = q.load(activeLoad);
+      var th = activeThread();
+
+      head.innerHTML =
+        '<button type="button" class="btn-icon" id="chat-back" aria-label="Back to conversations" style="margin-right:.25rem"><i class="ri-arrow-left-line"></i></button>' +
+        ui.avatar(other ? other.name : 'Shipper', oid) +
+        '<div style="min-width:0;flex:1">' +
+          '<div style="font-weight:600">' + esc(other ? (other.company || other.name) : 'Shipper') +
+            (ROLE === 'shipper' && other && other.verified ? ' ' + ui.verifiedBadge(true, true) : '') + '</div>' +
+          '<div class="t-small">' + (other && other.name ? esc(other.name) + ' · ' : '') + (other && other.city ? esc(other.city) : '') + '</div>' +
+        '</div>' +
+        (load ? '<a class="chip chip-xs" href="' + loadHref(load) + '"><i class="ri-box-3-line"></i>' +
+          esc(load.origin.city + ' → ' + load.destination.city) + '</a>' : '');
+
+      var msgs = th ? q.messagesIn(th.id) : [];
+      if (!msgs.length) {
+        scroll.innerHTML = '<div class="msg-day">New conversation</div>' +
+          '<p class="t-small" style="text-align:center;color:var(--ink-3);max-width:36ch;margin:0 auto">' +
+          'Say hello about ' + (load ? esc(load.origin.city + ' → ' + load.destination.city) : 'this load') + '. Messages are visible to both sides.</p>';
+        return;
+      }
+
+      var lastDay = '';
+      scroll.innerHTML = msgs.map(function (m) {
+        var out = '';
+        var day = f.day(m.at);
+        if (day !== lastDay) { lastDay = day; out += '<div class="msg-day">' + esc(day) + '</div>'; }
+        if (m.kind === 'system') {
+          out += '<div class="msg-day" style="background:var(--accent-wash);color:var(--accent-deeper)">' + body2html(m.body) + '</div>';
+          return out;
+        }
+        var mine = m.fromId === me.id;
+        out += '<div class="msg ' + (mine ? 'is-me' : 'is-them') + '">' +
+          (m.kind === 'counter' ? '<span class="chip chip-xs chip-accent" style="align-self:' + (mine ? 'flex-end' : 'flex-start') + '"><i class="ri-price-tag-3-line"></i>Counter-offer</span>' : '') +
+          '<div class="msg-bubble">' + body2html(m.body) + '</div>' +
+          '<span class="msg-time">' + f.time(m.at) + '</span>' +
+        '</div>';
+        return out;
+      }).join('');
+    }
+
+    function loadHref(load) { return 'load.html?id=' + load.id; }
+
+    /* ---- actions ---- */
+    function selectThread(loadId, tpId) {
+      activeLoad = loadId; activeTp = tpId;
+      markRead();
+      paintThreads();
+      paintChat();
+      showThreadPane(true);
+      scrollToBottom();
+      focusInput();
+    }
+
+    function send() {
+      var input = dom.$('#chat-input', ctx.main);
+      if (!input) return;
+      var body = input.value.trim();
+      if (!body) return;
+      if (!activeLoad || !activeTp) { CB.toast('Pick a conversation first', 'warn'); return; }
+      var r = act.sendMessage({ loadId: activeLoad, transporterId: activeTp, fromId: me.id, body: body });
+      if (r && r.error) { CB.toast(esc(r.error), 'warn'); return; }
+      input.value = ''; input.style.height = '';
+      paintChat(); paintThreads(); scrollToBottom(); focusInput();
+    }
+
+    function markRead() {
+      var th = activeThread();
+      if (th) act.markThreadRead(th.id, me.id);
+    }
+    function scrollToBottom() {
+      var scroll = dom.$('#chat-scroll', ctx.main);
+      if (scroll) scroll.scrollTop = scroll.scrollHeight;
+    }
+    function focusInput() {
+      var input = dom.$('#chat-input', ctx.main);
+      if (input && window.matchMedia('(min-width:721px)').matches) input.focus();
+    }
+    function showThreadPane(on) {
+      var chat = dom.$('#chat', ctx.main);
+      if (chat) chat.classList.toggle('show-thread', !!on);
+    }
+
+    function body2html(s) { return esc(s).replace(/\n/g, '<br>'); }
+  }());
+  </script>
+</body>
+</html>

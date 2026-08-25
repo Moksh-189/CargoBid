@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dashboard · CargoBid</title>
+  <meta name="theme-color" content="#F4F6FD">
+  <link rel="icon" href="../assets/img/logo.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300..700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.css" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/base.css">
+  <link rel="stylesheet" href="../assets/css/app.css">
+</head>
+<body>
+  <a class="skip-link" href="#app-main">Skip to content</a>
+  <div class="grain" aria-hidden="true"></div>
+
+  <script src="../assets/js/core.js"></script>
+  <script src="../assets/js/match.js"></script>
+  <script src="../assets/js/seed.js"></script>
+  <script src="../assets/js/sim.js"></script>
+  <script src="../assets/js/ui.js"></script>
+  <script src="../assets/js/console.js"></script>
+  <script src="../assets/js/shell.js"></script>
+  <script>
+  CB.shell.mount({
+    role: 'shipper',
+    nav: 'dashboard',
+    title: 'Dashboard',
+    live: true,
+    render: function (ctx) {
+      var me = ctx.user, esc = CB.util.esc, f = CB.fmt, q = CB.q, ui = CB.ui;
+      var now = CB.clock.now();
+
+      var loads = q.loadsOf(me.id);
+      var open = loads.filter(function (l) { return l.status === 'open'; });
+      var trips = q.tripsForShipper(me.id);
+      var active = trips.filter(function (t) { return t.status !== 'delivered'; });
+      var delivered = trips.filter(function (t) { return t.status === 'delivered'; });
+      var totalBids = open.reduce(function (n, l) { return n + q.liveBidsFor(l.id).length; }, 0);
+      var closingSoon = open.filter(function (l) { return l.bidCloseAt - now < 3600000; }).length;
+      var moved = trips.reduce(function (s, t) { return s + (t.amount || 0); }, 0);
+
+      var carriers = {};
+      open.forEach(function (l) { q.liveBidsFor(l.id).forEach(function (b) { carriers[b.transporterId] = 1; }); });
+
+      var hour = new Date(now).getHours();
+      var greet = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+
+      /* --- auction card --- */
+      function auctionCard(l) {
+        var bids = q.liveBidsFor(l.id);
+        var low = q.lowestBid(l.id);
+        var tt = CB.truckType(l.need.truckType);
+        var price = l.mode === 'blind'
+          ? '<span class="chip chip-xs chip-accent"><i class="ri-eye-off-line"></i>Sealed</span> <span class="t-small">' + bids.length + ' bid' + (bids.length === 1 ? '' : 's') + '</span>'
+          : (low
+              ? '<strong class="t-num" style="font-size:1.0625rem">' + f.money(low.amount) + '</strong> <span class="t-small">lowest · ' + bids.length + ' bids</span>'
+              : '<span class="t-small">No bids yet</span>');
+        return '<a class="card card-lift" href="load.html?id=' + l.id + '">' +
+          '<div class="load-card">' +
+            '<div class="load-card-top">' +
+              '<div><div class="load-card-route">' + ui.route(l) + '</div>' +
+                '<p class="t-small" style="margin-top:.25rem">' + esc(l.material.name) + ' · ' + f.tons(l.material.weightTons) + '</p></div>' +
+              ui.statusChip(l.status) +
+            '</div>' +
+            '<div class="load-card-body">' +
+              '<span class="chip chip-xs"><i class="' + tt.icon + '"></i>' + esc(tt.label) + '</span>' +
+              '<span class="chip chip-xs"><i class="ri-route-line"></i>' + f.km(l.distanceKm) + '</span>' +
+              ui.flagChips(l.material.flags, 2) +
+            '</div>' +
+            '<div class="load-card-foot">' +
+              '<span>' + price + '</span>' + ui.countdown(l.bidCloseAt, 'Closes ') +
+            '</div>' +
+          '</div></a>';
+      }
+
+      /* --- trip row --- */
+      function tripRow(t) {
+        var l = q.load(t.loadId);
+        if (!l) return '';
+        var step = CB.TRIP_STEPS.filter(function (s) { return s.key === t.status; })[0];
+        var doneCount = t.checkpoints.filter(function (c) { return c.done; }).length;
+        return '<a class="row-between" style="padding:.75rem 0;border-bottom:1px solid var(--line)" href="trips.html?id=' + t.id + '">' +
+          '<div style="min-width:0"><div style="font-weight:600">' + ui.route(l, true) + '</div>' +
+            '<p class="t-small">' + esc(step ? step.label : t.status) + ' · ' + doneCount + '/6</p></div>' +
+          ui.statusChip(l.status) + '</a>';
+      }
+
+      var auctionsHtml = open.length
+        ? '<div class="cards">' + open.sort(CB.util.by('bidCloseAt')).map(auctionCard).join('') + '</div>'
+        : '<div class="empty"><i class="ri-inbox-line"></i><h3 class="t-h4">No open auctions</h3>' +
+          '<p class="t-small">Post a load and verified carriers on the corridor get notified within seconds.</p>' +
+          '<a class="btn" href="post-load.html"><i class="ri-add-line"></i>Post your first load</a></div>';
+
+      var tripsHtml = active.length
+        ? active.slice(0, 5).map(tripRow).join('')
+        : '<p class="t-small" style="padding:.5rem 0">No trips in motion right now.</p>';
+
+      ctx.main.innerHTML =
+        '<div class="page-head"><div class="page-head-text">' +
+          '<h2>' + greet + ', ' + esc(me.name.split(' ')[0]) + '</h2>' +
+          '<p class="t-lead">Here is what is moving across your lanes today.</p>' +
+        '</div><div class="page-actions">' +
+          '<a class="btn btn-outline" href="loads.html"><i class="ri-stack-line"></i>All loads</a>' +
+          '<a class="btn" href="post-load.html"><i class="ri-add-line"></i>Post a load</a>' +
+        '</div></div>' +
+
+        '<div class="stat-grid">' +
+          ui.statTile({ icon: 'ri-auction-line', value: open.length, label: 'Open auctions', foot: closingSoon ? '<span style="color:var(--stop)">' + closingSoon + ' closing within the hour</span>' : 'All windows healthy' }) +
+          ui.statTile({ icon: 'ri-price-tag-3-line', value: totalBids, label: 'Live bids received', foot: 'from ' + Object.keys(carriers).length + ' carriers' }) +
+          ui.statTile({ icon: 'ri-truck-line', value: active.length, label: 'Trips in transit', foot: delivered.length + ' delivered all-time' }) +
+          ui.statTile({ icon: 'ri-scales-3-line', value: f.moneyShort(moved), label: 'Freight value booked', foot: 'across ' + trips.length + ' trips' }) +
+        '</div>' +
+
+        '<div class="split">' +
+          '<div class="section-block">' +
+            '<div class="block-head"><h3>Live auctions</h3>' +
+              (open.length ? '<a class="btn-quiet btn-sm" href="loads.html">View all <i class="ri-arrow-right-line"></i></a>' : '') +
+            '</div>' + auctionsHtml +
+          '</div>' +
+          '<div class="split-aside">' +
+            '<div class="card"><div class="block-head"><h3 style="font-size:1rem">Active trips</h3>' +
+              (active.length ? '<a class="btn-quiet btn-sm" href="trips.html">All</a>' : '') + '</div>' + tripsHtml + '</div>' +
+            '<div class="card"><h3 style="font-size:1rem;margin-bottom:.75rem">Quick actions</h3>' +
+              '<div class="stack-sm">' +
+                '<a class="btn btn-outline btn-block" href="post-load.html"><i class="ri-add-box-line"></i>Post a load</a>' +
+                '<a class="btn btn-outline btn-block" href="transporters.html"><i class="ri-team-line"></i>Browse carriers</a>' +
+                '<a class="btn btn-outline btn-block" href="messages.html"><i class="ri-chat-3-line"></i>Messages</a>' +
+              '</div></div>' +
+          '</div>' +
+        '</div>';
+    }
+  });
+  </script>
+</body>
+</html>

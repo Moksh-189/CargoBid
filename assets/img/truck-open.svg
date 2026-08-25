@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 400" role="img" aria-labelledby="tOpenTruck"><title id="tOpenTruck">Open body goods truck</title>
+<g stroke="#14161C" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">
+  <ellipse cx="278" cy="332" rx="212" ry="42" fill="#8DB0F4" opacity="0.18" stroke="none"/>
+
+  <!-- far-side wheel peeking (behind chassis) -->
+  <ellipse cx="196" cy="238" rx="26" ry="16" fill="#2A2F3D"/>
+  <ellipse cx="196" cy="238" rx="14" ry="9" fill="#3D4354"/>
+
+  <!-- deck / chassis volume -->
+  <path d="M132 214 L296 120 L392 176 L228 270 Z" fill="#EEF3FE"/>
+  <path d="M392 176 L392 206 L228 300 L228 270 Z" fill="#DCE7FD"/>
+  <path d="M132 214 L132 244 L228 300 L228 270 Z" fill="#3D4354"/>
+  <path d="M392 176 L392 206" opacity="0.45"/>
+
+  <!-- crate 1 : yellow, rear of deck -->
+  <path d="M186 200 L220 220 L186 240 L152 220 Z" fill="#F7D46B"/>
+  <path d="M220 220 L220 250 L186 270 L186 240 Z" fill="#F5C544"/>
+  <path d="M152 220 L152 250 L186 270 L186 240 Z" fill="#DFA92C"/>
+  <path d="M203 210 L203 260" opacity="0.45"/>
+
+  <!-- crate 2 : blue, mid deck -->
+  <path d="M252 162 L286 182 L252 202 L218 182 Z" fill="#B9CFF9"/>
+  <path d="M286 182 L286 212 L252 232 L252 202 Z" fill="#8DB0F4"/>
+  <path d="M218 182 L218 212 L252 232 L252 202 Z" fill="#6D97E8"/>
+  <path d="M269 172 L269 222" opacity="0.45"/>
+
+  <!-- crate 3 : yellow, stacked high on the blue one -->
+  <path d="M252 118 L286 138 L252 158 L218 138 Z" fill="#F7D46B"/>
+  <path d="M286 138 L286 166 L252 186 L252 158 Z" fill="#F5C544"/>
+  <path d="M218 138 L218 166 L252 186 L252 158 Z" fill="#DFA92C"/>
+  <path d="M269 128 L269 176" opacity="0.45"/>
+
+  <!-- side rails : far (left) side stanchions + top rail -->
+  <path d="M140 210 L140 172" />
+  <path d="M196 178 L196 140" />
+  <path d="M252 146 L252 108" />
+  <path d="M136 172 L292 82 L300 87 L144 177 Z" fill="#DCE7FD"/>
+
+  <!-- side rails : near (right) side stanchions + top rail -->
+  <path d="M236 270 L236 232" />
+  <path d="M292 238 L292 200" />
+  <path d="M348 206 L348 168" />
+  <path d="M232 232 L388 142 L396 147 L240 237 Z" fill="#EEF3FE"/>
+
+  <!-- cab volume -->
+  <path d="M392 176 L456 140 L512 172 L448 210 Z" fill="#FFFFFF"/>
+  <path d="M448 210 L512 172 L512 236 L448 274 Z" fill="#DCE7FD"/>
+  <path d="M392 176 L448 210 L448 274 L392 240 Z" fill="#EEF3FE"/>
+
+  <!-- windscreen (faces right-down, on the near-right cab face) -->
+  <path d="M456 180 L502 154 L502 186 L456 212 Z" fill="#B9CFF9"/>
+  <path d="M462 182 L496 162 L496 170 L462 190 Z" fill="#FFFFFF" opacity="0.45" stroke="none"/>
+
+  <!-- side window on the left-facing cab face -->
+  <path d="M402 184 L438 206 L438 232 L402 210 Z" fill="#B9CFF9"/>
+  <path d="M408 190 L432 204 L432 212 L408 198 Z" fill="#FFFFFF" opacity="0.45" stroke="none"/>
+
+  <!-- grille / lower front -->
+  <path d="M456 218 L502 192 L502 216 L456 242 Z" fill="#2A2F3D"/>
+  <path d="M462 224 L496 204" opacity="0.45"/>
+  <path d="M456 246 L502 220 L502 234 L456 260 Z" fill="#3D4354"/>
+
+  <!-- side mirror -->
+  <path d="M452 176 L470 166" />
+  <path d="M466 158 L480 150 L480 168 L466 176 Z" fill="#3D4354"/>
+
+  <!-- wheel arches (near side) -->
+  <path d="M300 268 L318 258 L338 258 L356 268" fill="none"/>
+  <path d="M406 250 L424 240 L444 240 L462 250" fill="none"/>
+
+  <!-- near wheels (in front of body) -->
+  <ellipse cx="328" cy="282" rx="30" ry="19" fill="#2A2F3D"/>
+  <ellipse cx="328" cy="282" rx="16" ry="10" fill="#3D4354"/>
+  <ellipse cx="328" cy="282" rx="6" ry="4" fill="#DCE7FD"/>
+
+  <ellipse cx="434" cy="264" rx="30" ry="19" fill="#2A2F3D"/>
+  <ellipse cx="434" cy="264" rx="16" ry="10" fill="#3D4354"/>
+  <ellipse cx="434" cy="264" rx="6" ry="4" fill="#DCE7FD"/>
+
+  <!-- headlamp -->
+  <ellipse cx="494" cy="200" rx="7" ry="5" fill="#F7D46B"/>
+</g>
+</svg>
