@@ -515,6 +515,7 @@
       if (CB.seed) CB.seed.build();
       CB.save({ now: true, silent: true });
     }
+    CB.handoff.adopt();          /* ?as= / sessionStorage -> db.session */
     CB.bus.init();
     CB.leader.init();
     if (CB.sim) CB.sim.init();
@@ -544,7 +545,7 @@
     for (var i = 0; i < a.length; i++) {
       try { a[i](payload); } catch (e) { console.error('CargoBid listener error on "' + evt + '"', e); }
     }
-    if (evt !== 'change' && evt !== 'tick') CB.emit('any', { evt: evt, payload: payload });
+    if (evt !== 'change' && evt !== 'tick' && evt !== 'any') CB.emit('any', { evt: evt, payload: payload });
   };
 
   /* Cross-tab: BroadcastChannel where available, storage event as fallback.
@@ -856,8 +857,11 @@
       var u = CB.auth.user();
       if (!u || (role && u.role !== role)) {
         var here = location.pathname.split('/').slice(-2).join('/');
+        /* If we believed we were signed in, the store lost the session. Say
+           so, rather than bouncing back looking like the button did nothing. */
+        var why = (!u && CB.handoff.pending()) ? '&why=session' : '';
         location.replace(CB.rel('login.html') + '?need=' + encodeURIComponent(role || '') +
-          '&next=' + encodeURIComponent(here));
+          '&next=' + encodeURIComponent(here) + why);
         return null;
       }
       return u;

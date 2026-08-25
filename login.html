@@ -169,11 +169,26 @@
     var next = CB.param('next');
     var presetRole = need || validRole(CB.param('role'));  // for the signup default
 
+    var notices = [];
+    if (CB.param('why') === 'session') {
+      notices.push('<div class="notice notice-warn"><i class="ri-error-warning-line"></i><div>' +
+        '<strong>Your session didn’t stick.</strong> You were signed in, but this browser threw the ' +
+        'session away on the next page. That usually means site data is blocked for this page — ' +
+        'try a normal (non-private) window, or allow cookies/site data.</div></div>');
+    }
+    if (CB.storagePersistent === false) {
+      notices.push('<div class="notice notice-warn"><i class="ri-hard-drive-2-line"></i><div>' +
+        '<strong>This browser is blocking local storage.</strong> Sign-in will still route you ' +
+        'correctly, but nothing you do will be remembered after you leave the page.</div></div>');
+    }
     if (need) {
-      document.getElementById('need-notice').innerHTML =
-        '<div class="notice notice-info" style="margin-bottom:1.5rem"><i class="ri-lock-2-line"></i>' +
+      notices.push('<div class="notice notice-info"><i class="ri-lock-2-line"></i>' +
         '<div>That page is the <strong>' + esc(need) + '</strong> side. Sign in with a ' +
-        esc(need) + ' account below to continue.</div></div>';
+        esc(need) + ' account below to continue.</div></div>');
+    }
+    if (notices.length) {
+      document.getElementById('need-notice').innerHTML =
+        '<div style="display:grid;gap:.75rem;margin-bottom:1.5rem">' + notices.join('') + '</div>';
     }
 
     /* ---- demo directory, built live from the seed so it never drifts ------ */
@@ -253,7 +268,8 @@
       CB.auth.signIn(acc.id);
       /* Return to the bounced-from page only if the role lines up. */
       var dest = (next && (!need || need === acc.role)) ? next : CB.auth.home(acc.role);
-      window.location.href = dest;
+      /* ?as= carries the session even if this browser won't persist it. */
+      window.location.href = CB.handoff.tag(dest, acc.id);
     });
 
     /* ---- CREATE ACCOUNT --------------------------------------------------- */
@@ -281,24 +297,18 @@
           sector: 'General freight', blurb: '', featured: false, memberSince: now
         });
       } else {
-        var prof = {
-          userId: id, homeBase: city, currentCity: city, availableFrom: now,
-          radiusKm: 60, fleetSize: 0, truckTypes: [],
-          docs: { gst: 'none', pan: 'none', rc: 'none' },
-          docRefs: { gst: '', pan: '', rc: '' },
-          verified: false, hazmatLicence: false, prefersSms: false,
-          ratings: { punctuality: 0, cargoSafety: 0, communication: 0, count: 0 },
-          deliveries: 0, onTimeDeliveries: 0, lateDeliveries: 0, onTimeRate: 0,
-          cancellations: 0, noShows: 0, bidsPlaced: 0, bidsWon: 0,
-          blurb: '', featured: false, memberSince: now, reliability: 0
-        };
-        prof.reliability = CB.score.reliability(prof);
-        CB.db.transporters.push(prof);
+        CB.db.transporters.push(CB.blankCarrier(id, city, now));
       }
 
       CB.save({ now: true });
       CB.auth.signIn(id);
-      window.location.href = CB.auth.home(role);
+      /* Carry the whole account on the URL, so the dashboard can rebuild it
+         if this browser refused to persist what we just saved. */
+      window.location.href = CB.handoff.tag(CB.auth.home(role), id) +
+        '&nurole=' + encodeURIComponent(role) +
+        '&nuname=' + encodeURIComponent(name) +
+        '&nucompany=' + encodeURIComponent(company) +
+        '&nucity=' + encodeURIComponent(city);
     });
 
     /* ---- gray demo-credential helper -------------------------------------- */
