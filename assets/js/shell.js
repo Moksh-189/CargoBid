@@ -50,6 +50,8 @@
       { key: 'escrow',       icon: 'ri-wallet-3-line',    label: 'Escrow Ledger',href: 'shipper/escrow.html' },
       { section: 'Network' },
       { key: 'transporters', icon: 'ri-team-line',        label: 'Transporters', href: 'shipper/transporters.html' },
+      { key: 'disputes',     icon: 'ri-scales-3-line',    label: 'Disputes',     href: 'shipper/dispute.html',
+        count: function (u) { return q.disputesForShipper(u.id).filter(function(d) { return d.status !== 'admin_resolved'; }).length; } },
       { key: 'messages',     icon: 'ri-chat-3-line',      label: 'Messages',     href: 'shipper/messages.html',
         count: function (u) { return q.unreadCount(u.id); }, live: true }
     ],
@@ -66,6 +68,8 @@
       { key: 'fleet',       icon: 'ri-caravan-line',      label: 'Fleet',        href: 'transporter/fleet.html' },
       { key: 'trips',       icon: 'ri-route-line',        label: 'Trips',        href: 'transporter/trips.html',
         count: function (u) { return activeTrips(q.tripsOf(u.id)).length; } },
+      { key: 'disputes',    icon: 'ri-scales-3-line',     label: 'Disputes',     href: 'transporter/dispute.html',
+        count: function (u) { return q.disputesForTransporter(u.id).filter(function(d) { return d.status !== 'admin_resolved'; }).length; } },
       { key: 'messages',    icon: 'ri-chat-3-line',       label: 'Messages',     href: 'transporter/messages.html',
         count: function (u) { return q.unreadCount(u.id); }, live: true }
     ]
