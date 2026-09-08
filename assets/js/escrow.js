@@ -149,6 +149,7 @@
     trip.escrow.advancePaid = true;
     trip.escrow.advanceReleasedAt = now;
 
+    trip.escrow.ledger = trip.escrow.ledger || [];
     trip.escrow.ledger.push({
       event: 'advance_released', amount: trip.escrow.advanceAmount, at: now,
       note: '70% advance released to transporter'
