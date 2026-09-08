@@ -278,8 +278,8 @@
 
       out += '<div class="stack-sm">';
       fw.checks.forEach(function (chk) {
-        var icon = chk.ok ? 'ri-checkbox-circle-fill" style="color:var(--ok)' : 'ri-error-warning-fill" style="color:var(--warn)';
-        out += '<div class="t-small"><i class="' + icon + '"></i> ' + esc(chk.label) + '</div>';
+        var icon = chk.result.pass ? 'ri-checkbox-circle-fill" style="color:var(--ok)' : 'ri-error-warning-fill" style="color:var(--warn)';
+        out += '<div class="t-small"><i class="' + icon + '"></i> ' + esc(chk.name) + '</div>';
       });
       out += '</div></div>';
       return out;
