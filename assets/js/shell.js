@@ -47,6 +47,7 @@
         count: function (u) { return openLoadsOf(u.id).length; } },
       { key: 'trips',        icon: 'ri-truck-line',       label: 'Trips',        href: 'shipper/trips.html',
         count: function (u) { return activeTrips(q.tripsForShipper(u.id)).length; } },
+      { key: 'escrow',       icon: 'ri-wallet-3-line',    label: 'Escrow Ledger',href: 'shipper/escrow.html' },
       { section: 'Network' },
       { key: 'transporters', icon: 'ri-team-line',        label: 'Transporters', href: 'shipper/transporters.html' },
       { key: 'messages',     icon: 'ri-chat-3-line',      label: 'Messages',     href: 'shipper/messages.html',

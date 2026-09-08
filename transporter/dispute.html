@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Disputes · CargoBid</title>
+  <meta name="theme-color" content="#F4F6FD">
+  <link rel="icon" href="../assets/img/logo.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300..700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.css" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/base.css">
+  <link rel="stylesheet" href="../assets/css/app.css">
+</head>
+<body>
+  <a class="skip-link" href="#app-main">Skip to content</a>
+  <div class="grain" aria-hidden="true"></div>
+
+  <script src="../assets/js/core.js"></script>
+  <script src="../assets/js/match.js"></script>
+  <script src="../assets/js/escrow.js"></script>
+  <script src="../assets/js/firewall.js"></script>
+  <script src="../assets/js/tracking.js"></script>
+  <script src="../assets/js/seed.js"></script>
+  <script src="../assets/js/sim.js"></script>
+  <script src="../assets/js/ui.js"></script>
+  <script src="../assets/js/console.js"></script>
+  <script src="../assets/js/shell.js"></script>
+  <script>
+  (function () {
+    'use strict';
+    var dom = CB.dom, esc = CB.util.esc, f = CB.fmt, q = CB.q, ui = CB.ui, act = CB.act;
+    var disputeId = CB.param('id');
+    
+    var ctx = CB.shell.mount({
+      role: 'transporter', nav: 'disputes', title: disputeId ? 'Dispute' : 'Disputes', live: true, render: render
+    });
+    if (!ctx) return;
+    var me = ctx.user;
+
+    dom.on(ctx.main, 'submit', '#msg-form', function (e) {
+      e.preventDefault();
+      var input = dom.$('#msg-input', ctx.main);
+      var text = input.value.trim();
+      if (!text || !disputeId) return;
+      act.addDisputeMessage(disputeId, me.id, text);
+      input.value = '';
+    });
+
+    function render(ctx) { if (disputeId) renderDetail(ctx); else renderList(ctx); }
+
+    function renderList(ctx) {
+      ctx.setTitle('Disputes');
+      var disputes = q.disputesForTransporter(me.id);
+
+      ctx.main.innerHTML =
+        '<div class="page-head"><div class="page-head-text">' +
+          '<h2>Disputes</h2><p class="t-lead">Manage trip escalations and frozen escrows.</p>' +
+        '</div></div>' +
+        '<div class="cards">' +
+          (disputes.length ? disputes.map(function (d) {
+            var st = CB.DISPUTE_STATUS[d.status] || { label: 'Unknown', chip: 'chip' };
+            return '<a class="card card-lift" href="dispute.html?id=' + d.id + '" style="text-decoration:none;color:inherit">' +
+              '<div class="row-between">' +
+                '<div><div style="font-weight:600">Dispute ' + d.id + ' <span class="t-small" style="font-weight:400;color:var(--ink-2)">· Trip ' + d.tripId + '</span></div>' +
+                '<div class="t-small" style="margin-top:.2rem">' + esc(d.reason) + '</div></div>' +
+                '<span class="chip ' + st.chip + '">' + esc(st.label) + '</span>' +
+              '</div>' +
+            '</a>';
+          }).join('') : ui.empty('ri-scales-3-line', 'No disputes', 'You have no active disputes.')) +
+        '</div>';
+    }
+
+    function renderDetail(ctx) {
+      var d = q.dispute(disputeId);
+      if (!d) {
+        ctx.main.innerHTML = ui.empty('ri-error-warning-line', 'Not found', 'This dispute does not exist.');
+        return;
+      }
+      
+      var t = q.trip(d.tripId);
+      var sh = q.user(d.shipperId);
+      var st = CB.DISPUTE_STATUS[d.status] || { label: d.status, chip: 'chip' };
+
+      ctx.main.innerHTML =
+        '<nav class="breadcrumb"><a href="dispute.html">Disputes</a><i class="ri-arrow-right-s-line"></i><span>' + d.id + '</span></nav>' +
+        '<div class="page-head"><div class="page-head-text">' +
+          '<h2>Dispute ' + d.id + '</h2><p class="t-lead">Trip ' + d.tripId + ' · ' + esc(sh.company || sh.name) + '</p>' +
+        '</div><div class="page-actions">' +
+          '<span class="chip ' + st.chip + '">' + esc(st.label) + '</span>' +
+        '</div></div>' +
+
+        '<div class="split"><div class="section-block">' +
+          '<div class="card" style="display:flex;flex-direction:column;height:500px;padding:0">' +
+            '<div style="padding:1rem;border-bottom:1px solid var(--line);font-weight:600"><i class="ri-scales-3-line"></i> Negotiation log</div>' +
+            '<div style="flex:1;overflow-y:auto;padding:1rem;display:flex;flex-direction:column;gap:1rem;background:var(--shade)">' +
+              d.messages.map(function(m) {
+                var isMe = m.sender === me.id;
+                var u = q.user(m.sender) || { name: 'System' };
+                return '<div style="align-self:' + (isMe ? 'flex-end' : 'flex-start') + ';max-width:80%">' +
+                  '<div class="t-small" style="margin-bottom:.2rem;color:var(--ink-2);text-align:' + (isMe ? 'right' : 'left') + '">' + esc(u.name) + ' · ' + f.datetime(m.at) + '</div>' +
+                  '<div style="padding:.75rem 1rem;border-radius:.5rem;background:' + (isMe ? 'var(--ink)' : '#fff') + ';color:' + (isMe ? '#fff' : 'var(--ink)') + ';box-shadow:0 1px 3px rgba(0,0,0,.05)">' + esc(m.text) + '</div>' +
+                '</div>';
+              }).join('') +
+            '</div>' +
+            (d.status !== 'admin_resolved' ? 
+              '<div style="padding:1rem;border-top:1px solid var(--line);background:#fff">' +
+                '<form id="msg-form" class="row" style="gap:.5rem">' +
+                  '<input type="text" id="msg-input" class="input" style="flex:1" placeholder="Type a message or counter-offer..." autocomplete="off">' +
+                  '<button type="submit" class="btn"><i class="ri-send-plane-fill"></i></button>' +
+                '</form>' +
+              '</div>'
+            : '<div style="padding:1rem;text-align:center;color:var(--ink-3);background:#fff">This dispute has been resolved.</div>') +
+          '</div>' +
+        '</div>' +
+        '<div class="split-aside">' +
+          '<div class="card"><div class="block-head"><h3>Dispute Details</h3></div>' +
+            ui.kv([
+              ['Reason', esc(d.reason)],
+              ['Amount Claimed', '<span class="t-num" style="color:var(--error);font-weight:600">' + f.money(d.amountClaimed) + '</span>'],
+              ['Date Raised', f.datetime(d.createdAt)],
+              ['Trip Freight', f.money(t.amount)],
+              ['Escrow Balance', t.escrow ? f.money(t.escrow.balanceAmount) : '—']
+            ]) +
+          '</div>' +
+          '<div class="notice notice-info"><i class="ri-information-line"></i><div><strong>Escrow Frozen</strong><br>The balance payment for this trip is locked until this dispute is resolved or escalated to CargoBid Admin.</div></div>' +
+        '</div></div>';
+    }
+  }());
+  </script>
+</body>
+</html>

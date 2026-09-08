@@ -19,6 +19,9 @@
 
   <script src="../assets/js/core.js"></script>
   <script src="../assets/js/match.js"></script>
+  <script src="../assets/js/escrow.js"></script>
+  <script src="../assets/js/firewall.js"></script>
+  <script src="../assets/js/tracking.js"></script>
   <script src="../assets/js/seed.js"></script>
   <script src="../assets/js/sim.js"></script>
   <script src="../assets/js/ui.js"></script>
@@ -161,6 +164,8 @@
 
         '<div class="split"><div class="section-block">' +
           banner(t, l, delivered, review) +
+          escrowCard(t, l) +
+          trackingCard(t) +
           '<div class="card"><div class="block-head"><h3>Journey</h3>' +
             '<span class="t-small">' + doneCount(t) + ' of ' + t.checkpoints.length + ' steps</span></div>' +
             ui.timeline(t.checkpoints) + '</div>' +
@@ -169,6 +174,7 @@
 
         '<div class="split-aside">' +
           carrierCard(c, l.id) +
+          firewallCard(t) +
           consignmentCard(t, l, truck, tt) +
           (delivered && t.podUrl ? podCard(t) : '') +
         '</div></div>';
@@ -188,6 +194,95 @@
       return '<div class="notice notice-info" style="margin-bottom:var(--s-4)"><i class="ri-truck-line"></i>' +
         '<div><strong>' + esc(nx ? nx.label : 'On the corridor') + '</strong><br>' +
         'Delivery window closes ' + ui.countdown(l.deliverBy, '') + ' · ' + f.datetime(l.deliverBy) + '.</div></div>';
+    }
+
+    function escrowCard(t, l) {
+      if (!t.escrow) return '';
+      var st = CB.ESCROW_STATUS[t.escrow.status] || { label: 'Unknown', chip: 'chip' };
+      var out = '<div class="card"><div class="block-head"><h3>Escrow Protection</h3>' +
+        '<span class="chip chip-sm ' + st.chip + '">' + esc(st.label) + '</span></div>';
+      out += '<div class="row" style="gap:1rem;margin-bottom:1rem">';
+      out += '<div style="flex:1"><strong>' + f.money(t.escrow.totalLocked) + '</strong><br><span class="t-small">Total locked</span></div>';
+      out += '<div style="flex:1"><strong>' + f.money(t.escrow.advanceAmount) + '</strong><br><span class="t-small">Gate-In Advance</span></div>';
+      out += '<div style="flex:1"><strong>' + f.money(t.escrow.balanceAmount) + '</strong><br><span class="t-small">Gate-Out Balance</span></div>';
+      out += '</div>';
+
+      /* OTPs for the Shipper to share */
+      if (!t.escrow.gateInVerified) {
+        out += '<div class="notice notice-warn"><i class="ri-lock-unlock-line"></i><div><strong>Gate-In OTP: <span class="t-num" style="letter-spacing:2px;font-size:1.1rem">' + t.escrow.gateInOtp + '</span></strong><br>Share this with the driver ONLY after loading is complete and the E-Way bill is generated.</div></div>';
+      } else if (!t.escrow.gateOutVerified && t.escrow.status === 'advance_released') {
+        out += '<div class="notice notice-info"><i class="ri-lock-unlock-line"></i><div><strong>Gate-Out OTP: <span class="t-num" style="letter-spacing:2px;font-size:1.1rem">' + t.escrow.gateOutOtp + '</span></strong><br>Share this ONLY after cargo is safely unloaded and e-POD is received.</div></div>';
+      }
+
+      /* Demurrage info */
+      if (t.status === 'at-drop' && CB.escrow.currentDemurrage) {
+        var dem = CB.escrow.currentDemurrage(t);
+        if (dem.amount > 0) {
+          out += '<p class="t-small" style="color:var(--error);margin-top:1rem"><i class="ri-timer-flash-line"></i> <strong>Demurrage triggered:</strong> ' + f.money(dem.amount) + ' penalty deducted from balance.</p>';
+        } else {
+          out += '<p class="t-small" style="margin-top:1rem"><i class="ri-timer-line"></i> Free waiting time remaining: <strong>' + dem.freeLeft + ' hrs</strong>.</p>';
+        }
+      }
+
+      /* Disputes */
+      if (t.escrow.disputeId) {
+        out += '<div style="margin-top:1rem"><a href="dispute.html?id=' + t.escrow.disputeId + '" class="btn btn-outline btn-block"><i class="ri-scales-3-line"></i>View Dispute</a></div>';
+      } else if (t.status === 'delivered' && t.escrow.status === 'fully_released') {
+        out += '<div style="margin-top:1rem"><a href="dispute.html?tripId=' + t.id + '" class="btn btn-quiet btn-block" style="color:var(--error)"><i class="ri-alert-line"></i>Raise a dispute</a></div>';
+      }
+      return out + '</div>';
+    }
+
+    function trackingCard(t) {
+      if (!CB.tracking) return '';
+      var trk = CB.tracking.init(t);
+      if (!trk) return '';
+      var isLost = trk.signal === 'signal_lost';
+      
+      var statusColor = isLost ? 'var(--error)' : 'var(--ok)';
+      var statusIcon = isLost ? 'ri-gps-line' : 'ri-broadcast-line';
+      var statusText = isLost ? 'Signal Lost' : 'Live Tracking';
+
+      var out = '<div class="card"><div class="block-head"><h3>SIM Tracking</h3>' +
+        '<span class="t-small" style="color:' + statusColor + '"><i class="' + statusIcon + '"></i> ' + statusText + '</span></div>';
+
+      out += '<div style="background:var(--shade);padding:.75rem;border-radius:.35rem;margin-bottom:1rem">';
+      if (trk.lastPingAt) {
+        out += '<div class="t-small"><strong>Last ping:</strong> ' + f.datetime(trk.lastPingAt) + '</div>';
+        out += '<div class="t-small"><strong>Location:</strong> ' + (trk.currentLocation || 'Moving on route') + '</div>';
+      } else {
+        out += '<div class="t-small">Waiting for first signal ping...</div>';
+      }
+      out += '</div>';
+
+      if (trk.recentTolls && trk.recentTolls.length) {
+        out += '<h4 style="font-size:.8rem;text-transform:uppercase;color:var(--ink-3);margin-bottom:.5rem">Recent Tolls (FASTag)</h4><div class="stack-sm">';
+        trk.recentTolls.forEach(function (toll) {
+          out += '<div class="t-small"><i class="ri-map-pin-2-line" style="color:var(--ink-3)"></i> ' + esc(toll.plaza) + ' <span style="float:right">' + f.relative(toll.at) + '</span></div>';
+        });
+        out += '</div>';
+      }
+
+      return out + '</div>';
+    }
+
+    function firewallCard(t) {
+      if (!CB.firewall) return '';
+      var fw = CB.firewall.gateInCheck(t.id);
+      
+      var status = fw.pass ? 'chip-ok' : 'chip-warn';
+      var label = fw.pass ? 'Verified' : 'Pending Verification';
+
+      var out = '<div class="card"><div class="block-head"><h3>Pre-Trip Firewall</h3>' +
+        '<span class="chip chip-sm ' + status + '">' + label + '</span></div>';
+
+      out += '<div class="stack-sm">';
+      fw.checks.forEach(function (chk) {
+        var icon = chk.ok ? 'ri-checkbox-circle-fill" style="color:var(--ok)' : 'ri-error-warning-fill" style="color:var(--warn)';
+        out += '<div class="t-small"><i class="' + icon + '"></i> ' + esc(chk.label) + '</div>';
+      });
+      out += '</div></div>';
+      return out;
     }
 
     function carrierCard(c, loadId) {

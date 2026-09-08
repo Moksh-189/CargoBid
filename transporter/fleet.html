@@ -19,6 +19,9 @@
 
   <script src="../assets/js/core.js"></script>
   <script src="../assets/js/match.js"></script>
+  <script src="../assets/js/escrow.js"></script>
+  <script src="../assets/js/firewall.js"></script>
+  <script src="../assets/js/tracking.js"></script>
   <script src="../assets/js/seed.js"></script>
   <script src="../assets/js/sim.js"></script>
   <script src="../assets/js/ui.js"></script>
@@ -180,6 +183,9 @@
         '</div>' +
 
         '<div class="split-aside">' +
+          (!t.verified ? '<div class="card" style="background:#e8fdf2;border:1px solid #25D366"><div class="block-head"><h3 style="font-size:1rem"><img src="../assets/img/whatsapp-bot.svg" width="20" height="20" style="vertical-align:-4px;margin-right:6px">Connect WhatsApp</h3></div>' +
+          '<p class="t-small" style="margin-bottom:.75rem">Tired of uploading PDFs here? You can verify your fleet instantly by taking photos of your RC and PAN in our WhatsApp bot.</p>' +
+          '<button class="btn btn-sm btn-block" style="background:#25D366;color:#fff;border:none" onclick="CB.toast(\'Check your phone for a WhatsApp message from CargoBid.\', \'ok\')"><i class="ri-whatsapp-line"></i> Verify on WhatsApp</button></div>' : '') +
           '<div class="card"><div class="block-head"><h3 style="font-size:1rem">Verification centre</h3>' +
             (t.verified ? '<span class="chip chip-xs chip-ok"><i class="ri-verified-badge-fill"></i>Verified</span>'
                         : '<span class="chip chip-xs chip-warn">' + cleared + ' of 3</span>') + '</div>' +

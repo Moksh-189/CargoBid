@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin Dashboard · CargoBid God Mode</title>
+  <link rel="icon" href="../assets/img/logo.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300..700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.css" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/base.css">
+  <link rel="stylesheet" href="../assets/css/admin.css">
+  <link rel="stylesheet" href="../assets/css/app.css">
+</head>
+<body>
+  <div class="admin-layout" id="app-main">
+    <aside class="admin-sidebar">
+      <div class="admin-sidebar-header">
+        <i class="ri-shield-user-fill" style="color:var(--admin-accent);font-size:1.5rem"></i>
+        CargoBid Admin
+      </div>
+      <nav class="admin-nav">
+        <div class="admin-nav-section">Escalations</div>
+        <a href="#" aria-current="page"><i class="ri-scales-3-line"></i> Dispute Resolution</a>
+        <a href="#"><i class="ri-radar-line"></i> Fraud Alerts</a>
+        <div class="admin-nav-section">Ledger</div>
+        <a href="#"><i class="ri-wallet-3-line"></i> Platform Escrow</a>
+        <a href="#"><i class="ri-funds-line"></i> Revenue (2.5%)</a>
+      </nav>
+    </aside>
+    <main class="admin-main">
+      <header class="admin-header">
+        <h1 style="font-size:1.1rem;font-weight:600;margin:0">Dispute Resolution Engine</h1>
+        <div class="row" style="gap:1rem;align-items:center">
+          <span class="t-small t-num" id="clock" style="color:var(--ink-2)"></span>
+          <a class="btn btn-outline btn-sm" href="../index.html">Exit God Mode</a>
+        </div>
+      </header>
+      <div class="admin-content" id="content"></div>
+    </main>
+  </div>
+
+  <script src="../assets/js/core.js"></script>
+  <script src="../assets/js/match.js"></script>
+  <script src="../assets/js/escrow.js"></script>
+  <script src="../assets/js/firewall.js"></script>
+  <script src="../assets/js/tracking.js"></script>
+  <script src="../assets/js/seed.js"></script>
+  <script src="../assets/js/sim.js"></script>
+  <script src="../assets/js/ui.js"></script>
+  <script>
+  (function () {
+    'use strict';
+    var dom = CB.dom, esc = CB.util.esc, f = CB.fmt, q = CB.q, act = CB.act, ui = CB.ui;
+
+    function render() {
+      var disputes = q.allDisputes();
+      var active = disputes.filter(function(d) { return d.status !== 'admin_resolved'; });
+      var totalFrozen = 0;
+      active.forEach(function(d) {
+        var t = q.trip(d.tripId);
+        if (t && t.escrow) totalFrozen += t.escrow.balanceAmount;
+      });
+
+      dom.$('#clock').textContent = f.datetime(CB.clock.now());
+
+      var html = '<div class="row" style="gap:1.5rem;margin-bottom:2rem">' +
+        '<div class="admin-stat-card" style="flex:1"><div class="label">Active Disputes</div><div class="value">' + active.length + '</div></div>' +
+        '<div class="admin-stat-card" style="flex:1"><div class="label">Total Frozen Escrow</div><div class="value" style="color:var(--error)">' + f.money(totalFrozen) + '</div></div>' +
+        '<div class="admin-stat-card" style="flex:1"><div class="label">Platform Health</div><div class="value" style="color:var(--ok)">99.8%</div></div>' +
+      '</div>';
+
+      if (!active.length) {
+        html += ui.empty('ri-check-double-line', 'Queue Clear', 'No active disputes require admin intervention.');
+      } else {
+        html += '<table class="data-table">' +
+          '<thead><tr><th>Dispute ID</th><th>Trip / Route</th><th>Shipper vs Transporter</th><th>Frozen Balance</th><th>Status</th><th>Action</th></tr></thead>' +
+          '<tbody>' +
+          active.map(function(d) {
+            var t = q.trip(d.tripId);
+            var l = q.load(t.loadId);
+            var sh = q.user(d.shipperId);
+            var tr = q.user(d.transporterId);
+            var st = CB.DISPUTE_STATUS[d.status] || { label: 'Unknown', chip: 'chip' };
+            var bal = t.escrow ? t.escrow.balanceAmount : 0;
+            return '<tr>' +
+              '<td class="t-num" style="font-weight:600">' + d.id + '</td>' +
+              '<td>' + t.id + '<br><span class="t-small" style="color:var(--ink-2)">' + esc(l.origin.city + ' → ' + l.destination.city) + '</span></td>' +
+              '<td>' + esc(sh.company || sh.name) + ' <i class="ri-sword-line" style="color:var(--error);margin:0 .2rem"></i> ' + esc(tr.company || tr.name) + '</td>' +
+              '<td class="t-num">' + f.money(bal) + '</td>' +
+              '<td><span class="chip chip-sm ' + st.chip + '">' + esc(st.label) + '</span></td>' +
+              '<td><button class="btn btn-sm" data-resolve="' + d.id + '">Resolve</button></td>' +
+            '</tr>';
+          }).join('') +
+          '</tbody></table>';
+      }
+
+      dom.$('#content').innerHTML = html;
+    }
+
+    dom.on(document.body, 'click', '[data-resolve]', function() {
+      var id = this.getAttribute('data-resolve');
+      var d = q.dispute(id);
+      if (!d) return;
+      var t = q.trip(d.tripId);
+      var bal = t.escrow ? t.escrow.balanceAmount : 0;
+
+      ui.modal({
+        title: 'Resolve Dispute ' + d.id,
+        subtitle: 'Determine how to split the frozen balance of ' + f.money(bal) + ' between Transporter and Shipper.',
+        size: 'sm',
+        body: '<div class="field"><label>Payout to Transporter (%)</label><input type="number" id="split-pct" class="input" min="0" max="100" value="50"></div>' +
+              '<p class="t-small" style="margin-top:.5rem;color:var(--ink-2)">The remainder will be refunded to the Shipper. This action is final and executes Escrow split.</p>',
+        actions: [
+          { label: 'Cancel', className: 'btn-outline', onClick: function(mo) { mo.close(); } },
+          { label: 'Execute Split', className: 'btn-stop', icon: 'ri-scales-3-line', onClick: function(mo) {
+            var pct = Number(dom.$('#split-pct', mo.el).value);
+            if (isNaN(pct) || pct < 0 || pct > 100) return;
+            act.resolveDispute(d.id, pct);
+            mo.close();
+            render();
+          }}
+        ]
+      });
+    });
+
+    CB.on('change', render);
+    render();
+  })();
+  </script>
+</body>
+</html>

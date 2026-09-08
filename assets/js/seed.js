@@ -771,6 +771,18 @@
         if (!truck.currentCity) truck.currentCity = load.destination.city;
       }
 
+      if (CB.escrow) {
+        trip.escrow = {
+          status: spec.tripAt === 'delivered' ? 'settled' : (upto >= 2 ? 'advance_released' : 'locked'),
+          amountLocked: trip.amount,
+          amountReleased: spec.tripAt === 'delivered' ? trip.amount : (upto >= 2 ? trip.amount * 0.8 : 0),
+          gateInOtp: util.int(rand, 1000, 9999).toString(),
+          gateOutOtp: util.int(rand, 1000, 9999).toString(),
+          penalties: [],
+          updatedAt: trip.createdAt
+        };
+      }
+
       CB.db.trips.push(trip);
 
       if (spec.review) {
@@ -786,6 +798,31 @@
 
     /* Historic reviews so ratings are not all traceable to seeded trips. */
     seedHistoricReviews();
+
+    /* --- disputes --- */
+    var disputeTrip = CB.db.trips.find(function(t) { return t.status === 'delivered'; });
+    if (disputeTrip && CB.escrow) {
+      var load = CB.q.load(disputeTrip.loadId);
+      var d = {
+        id: 'DS4102',
+        tripId: disputeTrip.id,
+        shipperId: load.shipperId,
+        transporterId: disputeTrip.transporterId,
+        status: 'negotiating',
+        reason: 'Consignment damaged during transit due to improper lashing.',
+        amountClaimed: 25000,
+        createdAt: T0 - h(48),
+        messages: [
+          { sender: load.shipperId, text: 'Consignment damaged during transit due to improper lashing.', at: T0 - h(48) },
+          { sender: disputeTrip.transporterId, text: 'We used standard lashing. The packaging was weak from the start.', at: T0 - h(42) },
+          { sender: load.shipperId, text: 'Packaging is standard. We are claiming 25,000 INR for the damage.', at: T0 - h(24) }
+        ]
+      };
+      CB.db.disputes.push(d);
+      disputeTrip.escrow.status = 'frozen';
+      disputeTrip.escrow.disputeId = d.id;
+      disputeTrip.escrow.balancePaid = false;
+    }
 
     /* --- conversations --------------------------------------------- */
     seedThreads(byKey);

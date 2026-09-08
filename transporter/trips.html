@@ -19,6 +19,9 @@
 
   <script src="../assets/js/core.js"></script>
   <script src="../assets/js/match.js"></script>
+  <script src="../assets/js/escrow.js"></script>
+  <script src="../assets/js/firewall.js"></script>
+  <script src="../assets/js/tracking.js"></script>
   <script src="../assets/js/seed.js"></script>
   <script src="../assets/js/sim.js"></script>
   <script src="../assets/js/ui.js"></script>
@@ -45,11 +48,48 @@
     dom.on(ctx.main, 'click', '[data-filter]', function () { filter = this.getAttribute('data-filter'); ctx.refresh(); });
     dom.on(ctx.main, 'click', '[data-advance]', function () {
       var t = q.trip(this.getAttribute('data-advance')); if (!t) return;
+      var nx = nextStep(t);
+      if (!nx) return;
+      
+      if (CB.escrow && t.escrow && ((nx.key === 'loaded' && t.escrow.status === 'locked') || (nx.key === 'delivered' && t.escrow.status === 'advance_released'))) {
+        var isGateIn = nx.key === 'loaded';
+        var uploadHtml = !isGateIn ? '<div class="field" style="margin-top:.75rem"><label>e-POD Upload (Simulated)</label><div style="border:1px dashed var(--line);padding:1rem;text-align:center;border-radius:.35rem;cursor:pointer" onclick="this.innerHTML=\'<i class=\\\'ri-file-check-line\\\'></i> pod_scanned.pdf attached\';this.style.borderColor=\'var(--ok)\';this.style.color=\'var(--ok)\';"><i class="ri-upload-cloud-2-line"></i> Click to attach POD</div></div>' : '';
+
+        ui.modal({
+          title: isGateIn ? 'Gate-In OTP Required' : 'Gate-Out OTP & e-POD',
+          subtitle: isGateIn ? 'Enter the 4-digit OTP from the shipper to verify loading and release your 70% advance.' : 'Upload the signed e-POD and enter the receiver\'s OTP to confirm delivery and release the balance.',
+          size: 'sm',
+          body: '<div class="field"><label>OTP</label><input type="text" id="otp-input" class="input t-num" autocomplete="off" maxlength="4" style="font-size:1.5rem;letter-spacing:4px"></div>' + uploadHtml + '<p class="field-error" id="otp-err" hidden></p>',
+          actions: [
+            { label: 'Cancel', className: 'btn-outline', onClick: function (mo) { mo.close(); } },
+            { label: 'Verify & Advance', icon: 'ri-check-line', onClick: function (mo) {
+              var otp = dom.$('#otp-input', mo.el).value;
+              if (isGateIn) {
+                var fwRes = CB.firewall ? CB.firewall.gateInCheck(t.id) : { pass: true };
+                if (!fwRes.pass) { dom.$('#otp-err', mo.el).hidden = false; dom.$('#otp-err', mo.el).textContent = 'Blocked by Firewall: FASTag/E-Way Bill missing.'; return; }
+                var r = CB.escrow.verifyGateIn(t.id, otp);
+                if (r.error) { dom.$('#otp-err', mo.el).hidden = false; dom.$('#otp-err', mo.el).textContent = r.error; return; }
+              } else {
+                var r = CB.escrow.verifyGateOut(t.id, otp);
+                if (r.error) { dom.$('#otp-err', mo.el).hidden = false; dom.$('#otp-err', mo.el).textContent = r.error; return; }
+              }
+              mo.close();
+              doAdvance(t);
+            } }
+          ],
+          onMount: function (mo) { dom.$('#otp-input', mo.el).focus(); }
+        });
+        return;
+      }
+      doAdvance(t);
+    });
+
+    function doAdvance(t) {
       var r = act.advanceTrip(t.id);
       if (!r || r.error) { CB.toast((r && r.error) || 'Could not update', 'warn'); return; }
       CB.toast(r.step.key === 'delivered' ? 'Delivered · POD captured' : r.step.label + ' confirmed',
         r.step.key === 'delivered' ? 'ok' : 'info');
-    });
+    }
 
     function render(ctx) { if (tripId) renderDetail(ctx); else renderList(ctx); }
 
@@ -161,6 +201,8 @@
 
         '<div class="split"><div class="section-block">' +
           banner(t, l, delivered) +
+          paymentCard(t) +
+          trackingCard(t) +
           '<div class="card"><div class="block-head"><h3>Journey</h3>' +
             '<span class="t-small">' + doneCount(t) + ' of ' + t.checkpoints.length + ' steps</span></div>' +
             ui.timeline(t.checkpoints) +
@@ -170,6 +212,7 @@
 
         '<div class="split-aside">' +
           shipperCard(sh, l.id) +
+          firewallCard(t) +
           consignmentCard(t, l, truck, tt) +
           (delivered && t.podUrl ? podCard(t) : '') +
         '</div></div>';
@@ -187,6 +230,76 @@
       return '<div class="notice notice-info" style="margin-bottom:var(--s-4)"><i class="ri-truck-line"></i>' +
         '<div><strong>' + esc(nx ? nx.label : 'On the corridor') + '</strong><br>' +
         'Delivery window closes ' + ui.countdown(l.deliverBy, '') + ' · ' + f.datetime(l.deliverBy) + '. Keep the shipper updated as you hit each checkpoint.</div></div>';
+    }
+
+    function paymentCard(t) {
+      if (!t.escrow) return '';
+      var st = CB.ESCROW_STATUS[t.escrow.status] || { label: 'Unknown', chip: 'chip' };
+      var out = '<div class="card"><div class="block-head"><h3>Escrow Payment</h3>' +
+        '<span class="chip chip-sm ' + st.chip + '">' + esc(st.label) + '</span></div>';
+      out += '<div class="row" style="gap:1rem;margin-bottom:1rem">';
+      out += '<div style="flex:1"><strong>' + f.money(t.escrow.freightAmount) + '</strong><br><span class="t-small">Freight Amount</span></div>';
+      out += '<div style="flex:1;color:' + (t.escrow.advancePaid ? 'var(--ok)' : 'inherit') + '"><strong>' + f.money(t.escrow.advanceAmount) + '</strong><br><span class="t-small">70% Advance</span></div>';
+      out += '<div style="flex:1;color:' + (t.escrow.balancePaid ? 'var(--ok)' : 'inherit') + '"><strong>' + f.money(t.escrow.balanceAmount) + '</strong><br><span class="t-small">30% Balance</span></div>';
+      out += '</div>';
+
+      /* Demurrage info */
+      if (t.status === 'at-drop' && CB.escrow.currentDemurrage) {
+        var dem = CB.escrow.currentDemurrage(t);
+        if (dem.amount > 0) {
+          out += '<p class="t-small" style="color:var(--error);margin-top:1rem"><i class="ri-timer-flash-line"></i> <strong>Demurrage triggered:</strong> ' + f.money(dem.amount) + ' penalty accumulating.</p>';
+        } else {
+          out += '<p class="t-small" style="margin-top:1rem"><i class="ri-timer-line"></i> Free waiting time remaining: <strong>' + dem.freeLeft + ' hrs</strong>. Deliver soon to avoid demurrage penalties.</p>';
+        }
+      }
+
+      if (t.escrow.disputeId) {
+        out += '<div class="notice notice-stop"><i class="ri-scales-3-line"></i><div><strong>Dispute raised</strong><br>Shipper has raised a dispute. Payment is frozen. <a href="dispute.html?id=' + t.escrow.disputeId + '">View dispute</a></div></div>';
+      }
+      return out + '</div>';
+    }
+
+    function trackingCard(t) {
+      if (!CB.tracking) return '';
+      var trk = CB.tracking.init(t);
+      if (!trk) return '';
+      var isLost = trk.signal === 'signal_lost';
+      
+      var statusColor = isLost ? 'var(--error)' : 'var(--ok)';
+      var statusIcon = isLost ? 'ri-gps-line' : 'ri-broadcast-line';
+      var statusText = isLost ? 'Signal Lost' : 'Live Tracking';
+
+      var out = '<div class="card"><div class="block-head"><h3>SIM Tracking</h3>' +
+        '<span class="t-small" style="color:' + statusColor + '"><i class="' + statusIcon + '"></i> ' + statusText + '</span></div>';
+
+      out += '<div style="background:var(--shade);padding:.75rem;border-radius:.35rem;margin-bottom:1rem">';
+      if (trk.lastPingAt) {
+        out += '<div class="t-small"><strong>Last ping:</strong> ' + f.datetime(trk.lastPingAt) + '</div>';
+        out += '<div class="t-small"><strong>Location:</strong> ' + (trk.currentLocation || 'Moving on route') + '</div>';
+      } else {
+        out += '<div class="t-small">Waiting for first signal ping...</div>';
+      }
+      out += '</div>';
+      return out + '</div>';
+    }
+
+    function firewallCard(t) {
+      if (!CB.firewall) return '';
+      var fw = CB.firewall.gateInCheck(t.id);
+      
+      var status = fw.pass ? 'chip-ok' : 'chip-warn';
+      var label = fw.pass ? 'Verified' : 'Pending Verification';
+
+      var out = '<div class="card"><div class="block-head"><h3>Pre-Trip Firewall</h3>' +
+        '<span class="chip chip-sm ' + status + '">' + label + '</span></div>';
+
+      out += '<div class="stack-sm">';
+      fw.checks.forEach(function (chk) {
+        var icon = chk.ok ? 'ri-checkbox-circle-fill" style="color:var(--ok)' : 'ri-error-warning-fill" style="color:var(--warn)';
+        out += '<div class="t-small"><i class="' + icon + '"></i> ' + esc(chk.label) + '</div>';
+      });
+      out += '</div></div>';
+      return out;
     }
 
     function advanceControl(t) {

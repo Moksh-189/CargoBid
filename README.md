@@ -57,6 +57,10 @@ Everything below is pre-seeded and works end to end with zero code edits.
     his fleet is stranded in **Delhi**). Open **Return loads**: a Delhi → Jaipur run surfaces at a
     discount, with the dead-head kilometres and empty-run savings spelled out.
 
+11. **Gate-to-Gate Tracking.** The driver arrives at the plant and the shipper shares a Gate-in OTP. The transporter enters this in `trips.html` to release the 70% advance. The truck moves and the `shipper/trips.html` map logs SIM pings.
+12. **e-POD & Settlement.** The truck delivers. The driver gets an e-POD signature, uploads it, and enters the Gate-out OTP. The final 30% payout clears instantly from the Escrow ledger.
+13. **Disputes & God Mode.** Switch to **admin (admin / cargobid)**. Check `admin/dashboard.html` to resolve disputes (e.g., demurrage/damage), manually splitting the frozen escrow payout.
+
 ### The money shot — no-login magic link + two tabs
 
 This is the part worth showing live:
@@ -155,7 +159,6 @@ CargoBid/
 ## Scope
 
 **In scope:** matching, live reverse-auction & sealed bidding, trust/reliability scoring,
-trip tracking, reviews, and backhaul matching — both sides fully playable.
+trip tracking, reviews, backhaul matching, secure payments (Escrow), API Firewalls (FASTag, E-Way Bill), WhatsApp onboarding, e-POD verification, and the Dispute Engine. Both sides fully playable, plus Admin God Mode.
 
-**Out of scope (deliberately):** payments, escrow, invoicing, GPS hardware integration, and
-e-way-bill filing. This is a product demo of the marketplace mechanics, not a billing system.
+**Out of scope (deliberately):** physical GPS hardware integration (simulated via SIM tracking) and real-money banking APIs (simulated via Escrow Ledger). This is a product demo of the marketplace mechanics and fintech layer, not a real banking gateway.

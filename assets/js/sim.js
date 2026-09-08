@@ -78,6 +78,7 @@
     changed += sim.stepBots(now);
     changed += sim.stepCounters(now);
     changed += sim.stepTrips(now);
+    changed += sim.stepTracking(now);
     changed += sim.stepVerification(now);
     changed += sim.stepMarket(now);
 
@@ -342,7 +343,60 @@
       hrs *= 0.85 + jit(trip.id, next.key) * 0.4;
 
       if (now >= lastDoneAt + h(hrs)) {
+        if (next.key === 'loaded' && CB.escrow && trip.escrow && trip.escrow.status === 'locked') {
+          var fwRes = CB.firewall ? CB.firewall.gateInCheck(trip.id) : { pass: true };
+          if (fwRes.pass) {
+            CB.escrow.verifyGateIn(trip.id, trip.escrow.gateInOtp);
+          } else {
+            return; /* Blocked by firewall, refunded */
+          }
+        }
+
         CB.act.advanceTrip(trip.id);
+
+        if (next.key === 'delivered' && CB.escrow && trip.escrow && trip.escrow.status === 'advance_released') {
+          CB.escrow.verifyGateOut(trip.id, trip.escrow.gateOutOtp);
+        }
+
+        n++;
+      }
+    });
+    return n;
+  };
+
+  sim.stepTracking = function (now) {
+    var n = 0;
+    if (!CB.tracking) return 0;
+    CB.db.trips.forEach(function (trip) {
+      if (trip.status !== 'in-transit' && trip.status !== 'at-drop') return;
+      var t = CB.tracking.init(trip);
+      var lastPing = t.lastPingAt || trip.createdAt;
+      
+      /* Ping every 30 virtual minutes */
+      if (now >= lastPing + m(30)) {
+        if (t.signal !== 'signal_lost') {
+          /* 2% chance of signal loss */
+          if (util.rng(trip.id + now)() < 0.02) {
+            CB.tracking.signalLost(trip.id);
+          } else {
+            CB.tracking.ping(trip.id);
+          }
+        } else {
+          /* Recover after 2 hours */
+          if (now >= t.signalLostAt + h(2)) {
+            CB.tracking.recover(trip.id);
+            CB.tracking.ping(trip.id);
+          } else {
+            /* 10% chance to hit a toll while lost */
+            if (util.rng(trip.id + now)() < 0.1) {
+              var plazas = CB.tracking.TOLL_PLAZAS || [];
+              if (plazas.length) {
+                var p = util.pick(util.rng(now), plazas);
+                CB.tracking.tollCrossing(trip.id, p.id);
+              }
+            }
+          }
+        }
         n++;
       }
     });

@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Escrow Ledger · CargoBid</title>
+  <meta name="theme-color" content="#F4F6FD">
+  <link rel="icon" href="../assets/img/logo.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300..700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.css" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/base.css">
+  <link rel="stylesheet" href="../assets/css/app.css">
+</head>
+<body>
+  <a class="skip-link" href="#app-main">Skip to content</a>
+  <div class="grain" aria-hidden="true"></div>
+
+  <script src="../assets/js/core.js"></script>
+  <script src="../assets/js/match.js"></script>
+  <script src="../assets/js/escrow.js"></script>
+  <script src="../assets/js/firewall.js"></script>
+  <script src="../assets/js/tracking.js"></script>
+  <script src="../assets/js/seed.js"></script>
+  <script src="../assets/js/sim.js"></script>
+  <script src="../assets/js/ui.js"></script>
+  <script src="../assets/js/console.js"></script>
+  <script src="../assets/js/shell.js"></script>
+  <script>
+  (function () {
+    'use strict';
+    var dom = CB.dom, esc = CB.util.esc, f = CB.fmt, q = CB.q, ui = CB.ui;
+    
+    var ctx = CB.shell.mount({
+      role: 'shipper', nav: 'escrow', title: 'Escrow Ledger', live: true, render: render
+    });
+    if (!ctx) return;
+
+    function render(ctx) {
+      var trips = q.tripsForShipper(ctx.user.id).filter(function(t) { return !!t.escrow; });
+      var totalLocked = 0, totalReleased = 0, totalFrozen = 0;
+      
+      trips.forEach(function(t) {
+        if (t.escrow.status === 'locked' || t.escrow.status === 'advance_released') {
+          totalLocked += t.escrow.balanceAmount;
+          if (t.escrow.status === 'locked') totalLocked += t.escrow.advanceAmount;
+        }
+        if (t.escrow.status === 'advance_released') totalReleased += t.escrow.advanceAmount;
+        if (t.escrow.status === 'fully_released') totalReleased += t.escrow.advanceAmount + t.escrow.balanceAmount; // Simplification
+        if (t.escrow.status === 'frozen') totalFrozen += t.escrow.balanceAmount;
+      });
+
+      var rows = trips.map(function(t) {
+        var l = q.load(t.loadId);
+        var st = CB.ESCROW_STATUS[t.escrow.status] || { label: 'Unknown', chip: 'chip' };
+        return '<a class="card card-lift" href="trips.html?id=' + t.id + '" style="text-decoration:none;color:inherit">' +
+          '<div class="row-between">' +
+            '<div><div style="font-weight:600">' + esc(l ? l.origin.city + ' → ' + l.destination.city : 'Trip ' + t.id) + '</div>' +
+            '<div class="t-small t-num" style="margin-top:.2rem;color:var(--ink-2)">' + f.money(t.escrow.totalLocked) + ' locked</div></div>' +
+            '<span class="chip ' + st.chip + '">' + esc(st.label) + '</span>' +
+          '</div>' +
+        '</a>';
+      }).join('');
+
+      ctx.main.innerHTML =
+        '<div class="page-head"><div class="page-head-text">' +
+          '<h2>Escrow Ledger</h2><p class="t-lead">Secure payment hold for all active trips.</p>' +
+        '</div></div>' +
+        '<div class="stat-grid">' +
+          ui.statTile({ icon: 'ri-lock-2-line', value: f.moneyShort(totalLocked), label: 'Currently Locked' }) +
+          ui.statTile({ icon: 'ri-funds-line', value: f.moneyShort(totalReleased), label: 'Released (Advances & Final)' }) +
+          ui.statTile({ icon: 'ri-scales-3-line', value: f.moneyShort(totalFrozen), label: 'Frozen in Dispute' }) +
+        '</div>' +
+        '<div class="cards" style="margin-top:var(--s-4)">' +
+          (rows || ui.empty('ri-wallet-3-line', 'No Escrow Activity', 'When you award trips, the freight amount will be locked in escrow here.')) +
+        '</div>';
+    }
+  }());
+  </script>
+</body>
+</html>

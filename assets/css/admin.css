@@ -1,0 +1,154 @@
+/* ==========================================================================
+   CargoBid - admin.css
+   Minimalist, high-density styling for the admin 'God Mode' interface.
+   ========================================================================== */
+
+:root {
+  --admin-sidebar: #0f172a;
+  --admin-sidebar-text: #94a3b8;
+  --admin-sidebar-active: #ffffff;
+  --admin-accent: #3b82f6;
+  --admin-bg: #f8fafc;
+}
+
+body {
+  background-color: var(--admin-bg);
+}
+
+.admin-layout {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.admin-sidebar {
+  width: 260px;
+  background-color: var(--admin-sidebar);
+  color: var(--admin-sidebar-text);
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-sidebar-header {
+  padding: 1.5rem;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  font-weight: 600;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.admin-nav {
+  padding: 1rem 0;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.admin-nav a {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1.5rem;
+  color: inherit;
+  text-decoration: none;
+  font-size: 0.95rem;
+  transition: all 0.2s;
+}
+
+.admin-nav a:hover {
+  background-color: rgba(255,255,255,0.05);
+  color: #fff;
+}
+
+.admin-nav a[aria-current="page"] {
+  background-color: rgba(59, 130, 246, 0.1);
+  color: var(--admin-accent);
+  border-right: 3px solid var(--admin-accent);
+}
+
+.admin-nav-section {
+  padding: 1.5rem 1.5rem 0.5rem;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgba(255,255,255,0.3);
+  font-weight: 600;
+}
+
+.admin-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.admin-header {
+  height: 64px;
+  background-color: #fff;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 2rem;
+}
+
+.admin-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 2rem;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.data-table th, .data-table td {
+  padding: 1rem 1.5rem;
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.95rem;
+}
+
+.data-table th {
+  background-color: #f1f5f9;
+  font-weight: 600;
+  color: var(--ink-2);
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+}
+
+.data-table tr:last-child td {
+  border-bottom: none;
+}
+
+.data-table tbody tr:hover {
+  background-color: #f8fafc;
+}
+
+.admin-stat-card {
+  background: #fff;
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+  border: 1px solid var(--line);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+}
+
+.admin-stat-card .label {
+  font-size: 0.85rem;
+  color: var(--ink-2);
+  margin-bottom: 0.5rem;
+}
+
+.admin-stat-card .value {
+  font-size: 2rem;
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: -0.02em;
+}

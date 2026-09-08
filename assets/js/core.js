@@ -455,8 +455,8 @@
       session: { userId: null },
       users: [], shippers: [], transporters: [], trucks: [],
       loads: [], bids: [], threads: [], messages: [], trips: [],
-      reviews: [], notifs: [], events: [],
-      seq: { load: 1040, bid: 8800, trip: 200, thread: 500, msg: 9000, review: 700, notif: 4000, truck: 300 }
+      reviews: [], notifs: [], events: [], disputes: [],
+      seq: { load: 1040, bid: 8800, trip: 200, thread: 500, msg: 9000, review: 700, notif: 4000, truck: 300, dispute: 100 }
     };
   };
 
@@ -1276,6 +1276,9 @@
     };
     CB.db.trips.push(trip);
 
+    /* Phase A: Lock the freight amount in Escrow */
+    if (CB.escrow) CB.escrow.lock(trip.id);
+
     CB.notify(bid.transporterId, 'bid-won', 'You won ' + load.id + ' 🎉',
       load.origin.city + ' → ' + load.destination.city + ' at ' + fmt.money(bid.amount) +
         (truck ? ' · assigned ' + truck.regNo : ''),
@@ -1444,6 +1447,81 @@
     CB.emit('change');
     CB.emit('trip:advanced', trip);
     return { trip: trip, step: next };
+  };
+
+  /* ---- disputes -------------------------------------------------------- */
+
+  q.dispute = function (id) { return CB.db.disputes.find(function (d) { return d.id === id; }); };
+  q.disputesForShipper = function (id) { return CB.db.disputes.filter(function (d) { return d.shipperId === id; }); };
+  q.disputesForTransporter = function (id) { return CB.db.disputes.filter(function (d) { return d.transporterId === id; }); };
+  q.allDisputes = function () { return CB.db.disputes.slice(); };
+
+  act.raiseDispute = function (tripId, reason, amountClaimed) {
+    var trip = q.trip(tripId);
+    if (!trip) return { error: 'Trip not found.' };
+    var load = q.load(trip.loadId);
+    if (!load) return { error: 'Load not found.' };
+
+    var d = {
+      id: CB.nextId('dispute', 'DS'),
+      tripId: trip.id,
+      shipperId: load.shipperId,
+      transporterId: trip.transporterId,
+      status: 'raised', // raised, negotiating, counter_proposed, accepted, escalated, admin_resolved
+      reason: reason,
+      amountClaimed: amountClaimed || trip.amount,
+      createdAt: CB.clock.now(),
+      messages: [{ sender: load.shipperId, text: reason, at: CB.clock.now() }]
+    };
+
+    CB.db.disputes.unshift(d);
+    
+    // Freeze escrow
+    if (CB.escrow) {
+      CB.escrow.freeze(trip.id, d.id);
+    }
+
+    CB.notify(trip.transporterId, 'warn', 'Dispute raised on ' + trip.id,
+      'Shipper has raised a dispute. Escrow payments are frozen.',
+      'transporter/dispute.html?id=' + d.id);
+
+    CB.logEvent('dispute', 'Raised on ' + trip.id);
+    CB.save();
+    CB.emit('change');
+    return { dispute: d };
+  };
+
+  act.addDisputeMessage = function (id, senderId, text, newStatus) {
+    var d = q.dispute(id);
+    if (!d) return { error: 'Dispute not found.' };
+    d.messages.push({ sender: senderId, text: text, at: CB.clock.now() });
+    if (newStatus) d.status = newStatus;
+    
+    var otherId = (senderId === d.shipperId) ? d.transporterId : d.shipperId;
+    var otherRole = (senderId === d.shipperId) ? 'transporter' : 'shipper';
+    CB.notify(otherId, 'message', 'New message on dispute ' + d.id,
+      text,
+      otherRole + '/dispute.html?id=' + d.id);
+
+    CB.save();
+    CB.emit('change');
+    return { dispute: d };
+  };
+
+  act.resolveDispute = function (id, splitPctTransporter) {
+    var d = q.dispute(id);
+    if (!d) return { error: 'Dispute not found.' };
+    d.status = 'admin_resolved';
+    
+    // Process payout
+    if (CB.escrow) {
+      CB.escrow.splitPayout(d.tripId, splitPctTransporter);
+    }
+
+    CB.logEvent('dispute', 'Resolved ' + d.id);
+    CB.save();
+    CB.emit('change');
+    return { dispute: d };
   };
 
   act.submitReview = function (input) {
