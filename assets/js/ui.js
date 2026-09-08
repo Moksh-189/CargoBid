@@ -345,7 +345,7 @@
           'stroke-dashoffset="' + (c * (1 - pct)).toFixed(1) + '" ' +
           'transform="rotate(-90 ' + size / 2 + ' ' + size / 2 + ')"/>' +
       '</svg>' +
-      '<span class="dial-val t-num">' + value + '</span>' +
+      '<span class="dial-val" style="font-variant-numeric: proportional-nums;">' + value + '</span>' +
       (opts.caption ? '<span class="dial-cap">' + esc(opts.caption) + '</span>' : '') +
       '</div>';
   };
