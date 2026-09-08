@@ -72,6 +72,7 @@
     }
 
     function render(ctx) {
+      me = ctx.user;
       var tp = q.transporter(me.id) || {};
       var away = tp.currentCity && tp.currentCity !== tp.homeBase;
       var rows = safe(function () { return match.returnLoadsFor(me.id); }, []);

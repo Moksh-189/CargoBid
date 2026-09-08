@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Earnings · CargoBid</title>
+  <meta name="description" content="View your freight earnings, platform fees and net settlement for every trip on CargoBid.">
+  <meta name="theme-color" content="#F4F6FD">
+  <link rel="icon" href="../assets/img/logo.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300..700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.css" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/base.css">
+  <link rel="stylesheet" href="../assets/css/app.css">
+</head>
+<body>
+  <a class="skip-link" href="#app-main">Skip to content</a>
+  <div class="grain" aria-hidden="true"></div>
+
+  <script src="../assets/js/core.js"></script>
+  <script src="../assets/js/match.js"></script>
+  <script src="../assets/js/escrow.js"></script>
+  <script src="../assets/js/firewall.js"></script>
+  <script src="../assets/js/tracking.js"></script>
+  <script src="../assets/js/seed.js"></script>
+  <script src="../assets/js/sim.js"></script>
+  <script src="../assets/js/ui.js"></script>
+  <script src="../assets/js/console.js"></script>
+  <script src="../assets/js/shell.js"></script>
+  <script>
+  (function () {
+    'use strict';
+    var dom = CB.dom, esc = CB.util.esc, f = CB.fmt, q = CB.q, ui = CB.ui;
+    var filter = 'all';
+
+    var TABS = [
+      { key: 'all',     label: 'All' },
+      { key: 'settled', label: 'Settled' },
+      { key: 'pending', label: 'In progress' },
+      { key: 'frozen',  label: 'Disputed' }
+    ];
+
+    var ctx = CB.shell.mount({
+      role: 'transporter', nav: 'earnings', title: 'Earnings', live: true, render: render
+    });
+    if (!ctx) return;
+    var me = ctx.user;
+
+    dom.on(ctx.main, 'click', '[data-filter]', function () {
+      filter = this.getAttribute('data-filter');
+      ctx.refresh();
+    });
+
+    /* ---- helpers ---- */
+    function escrowStatus(t) {
+      return t.escrow ? t.escrow.status : 'unlocked';
+    }
+
+    function bucket(t) {
+      var s = escrowStatus(t);
+      if (s === 'fully_released' || s === 'partial') return 'settled';
+      if (s === 'frozen') return 'frozen';
+      if (s === 'unlocked') return 'pending';
+      return 'pending'; /* locked, advance_released */
+    }
+
+    function inTab(t, key) { return key === 'all' ? true : bucket(t) === key; }
+
+    function platformFee(t) {
+      return t.escrow ? t.escrow.platformFee : CB.escrow.platformFee(t.amount);
+    }
+
+    function netSettlement(t) {
+      return t.amount - platformFee(t);
+    }
+
+    /* ---- row card ---- */
+    function earningRow(t) {
+      var l = q.load(t.loadId);
+      if (!l) return '';
+      var s = escrowStatus(t);
+      var st = CB.ESCROW_STATUS[s] || { label: 'Unknown', chip: 'chip' };
+      var fee = platformFee(t);
+      var net = netSettlement(t);
+      var delivered = t.status === 'delivered';
+      var bkt = bucket(t);
+
+      var settleBit;
+      if (bkt === 'settled') {
+        settleBit = '<span class="chip chip-xs chip-ok"><i class="ri-check-double-line"></i>Settled · ' + f.money(net) + '</span>';
+      } else if (bkt === 'frozen') {
+        settleBit = '<span class="chip chip-xs chip-stop"><i class="ri-scales-3-line"></i>Frozen — dispute</span>';
+      } else if (s === 'advance_released') {
+        settleBit = '<span class="chip chip-xs chip-accent"><i class="ri-funds-line"></i>70% advance paid · balance pending</span>';
+      } else {
+        settleBit = '<span class="chip chip-xs"><i class="ri-lock-2-line"></i>Awaiting delivery</span>';
+      }
+
+      return '<div class="card">' +
+        '<div class="load-card-top">' +
+          '<a href="trips.html?id=' + t.id + '" style="min-width:0;flex:1">' +
+            '<div class="load-card-route">' + ui.route(l) + '</div>' +
+            '<p class="t-small" style="margin-top:.25rem">' + esc(l.material.name) + ' · ' + f.tons(l.material.weightTons) + ' · ' + esc(t.id) + '</p>' +
+          '</a>' +
+          '<span class="chip chip-xs ' + st.chip + '">' + esc(st.label) + '</span>' +
+        '</div>' +
+
+        '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;margin:.85rem 0 .65rem;padding:.75rem;background:var(--shade);border-radius:var(--r-tight)">' +
+          '<div>' +
+            '<div class="t-small" style="color:var(--ink-3)">Freight</div>' +
+            '<div class="t-num" style="font-weight:650">' + f.money(t.amount) + '</div>' +
+          '</div>' +
+          '<div>' +
+            '<div class="t-small" style="color:var(--ink-3)">Platform fee (2.5%)</div>' +
+            '<div class="t-num" style="color:var(--ink-2)">−' + f.money(fee) + '</div>' +
+          '</div>' +
+          '<div>' +
+            '<div class="t-small" style="color:var(--ink-3)">Net to you</div>' +
+            '<div class="t-num" style="font-weight:650;color:var(--ok)">' + f.money(net) + '</div>' +
+          '</div>' +
+        '</div>' +
+
+        '<div class="row" style="gap:.5rem;align-items:center;flex-wrap:wrap">' +
+          settleBit +
+          (delivered ? '<span class="t-small" style="color:var(--ink-3)">' + f.date(t.deliveredAt) + '</span>' : '') +
+          '<a class="btn btn-sm btn-quiet" href="trips.html?id=' + t.id + '"><i class="ri-truck-line"></i>Trip details</a>' +
+        '</div>' +
+      '</div>';
+    }
+
+    /* ---- render ---- */
+    function render(ctx) {
+      me = ctx.user;
+      var allTrips = q.tripsOf(me.id);
+      var withEscrow = allTrips.filter(function (t) { return !!t.escrow || t.amount; });
+
+      /* totals */
+      var totalEarned = 0, totalSettled = 0, totalPending = 0, totalFrozen = 0, totalFees = 0;
+      withEscrow.forEach(function (t) {
+        var bkt = bucket(t);
+        var net = netSettlement(t);
+        var fee = platformFee(t);
+        totalEarned += t.amount;
+        totalFees += fee;
+        if (bkt === 'settled') totalSettled += net;
+        else if (bkt === 'frozen') totalFrozen += t.amount;
+        else totalPending += t.amount;
+      });
+
+      var counts = {};
+      TABS.forEach(function (tab) {
+        counts[tab.key] = withEscrow.filter(function (t) { return inTab(t, tab.key); }).length;
+      });
+      var rows = withEscrow.filter(function (t) { return inTab(t, filter); });
+
+      ctx.main.innerHTML =
+        '<div class="page-head"><div class="page-head-text">' +
+          '<h2>Earnings</h2><p class="t-lead">Your freight income — gross, net and settlement status, trip by trip.</p>' +
+        '</div><div class="page-actions">' +
+          '<a class="btn btn-outline" href="trips.html"><i class="ri-truck-line"></i>My trips</a>' +
+        '</div></div>' +
+
+        '<div class="stat-grid">' +
+          ui.statTile({ icon: 'ri-money-rupee-circle-line', value: f.moneyShort(totalEarned), label: 'Gross freight won', foot: withEscrow.length + ' trips total' }) +
+          ui.statTile({ icon: 'ri-check-double-line', value: f.moneyShort(totalSettled), label: 'Settled (net)', foot: 'after platform fees' }) +
+          ui.statTile({ icon: 'ri-time-line', value: f.moneyShort(totalPending), label: 'Awaiting settlement', foot: 'in transit or locked' }) +
+          ui.statTile({ icon: 'ri-percent-line', value: f.moneyShort(totalFees), label: 'Platform fees paid', foot: '2.5% per trip' }) +
+        '</div>' +
+
+        /* disclaimer */
+        '<div class="notice notice-info" style="margin:var(--s-4) 0">' +
+          '<i class="ri-information-line"></i>' +
+          '<div><strong>Demo earnings simulation.</strong> These figures reflect the simulated escrow ledger in this demo. In a live deployment, payouts would be processed via the registered bank account and you would receive a settlement statement.</div>' +
+        '</div>' +
+
+        (withEscrow.length
+          ? '<div class="toolbar"><div class="segment" role="tablist" style="width:auto">' +
+              TABS.map(function (tab) {
+                return '<button data-filter="' + tab.key + '" aria-selected="' + (tab.key === filter) + '">' +
+                  esc(tab.label) + ' <span class="tab-count t-num">' + counts[tab.key] + '</span></button>';
+              }).join('') +
+            '</div></div>'
+          : '') +
+
+        (rows.length
+          ? '<div class="cards" style="margin-top:var(--s-4)">' + rows.map(earningRow).join('') + '</div>'
+          : (withEscrow.length
+              ? ui.empty('ri-inbox-line', 'Nothing in this view', 'No trips match this filter.')
+              : ui.empty('ri-funds-line', 'No earnings yet',
+                  'Win a load on the marketplace — once the shipper awards your bid, earnings appear here.',
+                  '<a class="btn" href="marketplace.html"><i class="ri-search-line"></i>Find loads to bid on</a>')));
+    }
+  }());
+  </script>
+</body>
+</html>

@@ -83,7 +83,7 @@
   var TRANSPORTERS = [
     { id: 'U-T01', name: 'Vikram Singh', company: 'Singh Roadways',
       home: 'Jaipur', phone: '+91 98290 47712', email: 'vikram@singhroadways.in',
-      fleet: 12, types: ['open', 'trailer', 'container'], radius: 60,
+      fleet: 12, types: ['open', 'trailer', 'container'], radius: 400,
       docs: { gst: 'verified', pan: 'verified', rc: 'verified' },
       r: [4.7, 4.6, 4.5], count: 27, deliveries: 27, onTime: 24, cancel: 0, noShow: 0,
       bidsPlaced: 91, bidsWon: 31, since: -d(760), featured: true, hazmat: false,
@@ -91,7 +91,7 @@
 
     { id: 'U-T02', name: 'Mohan Lal Gurjar', company: 'Gurjar Transport Co.',
       home: 'Jaipur', current: 'Delhi', phone: '+91 94140 88123', email: 'gurjartransport@gmail.com',
-      fleet: 6, types: ['open', 'container'], radius: 50,
+      fleet: 6, types: ['open', 'container'], radius: 400,
       docs: { gst: 'verified', pan: 'verified', rc: 'verified' },
       r: [4.4, 4.5, 4.3], count: 19, deliveries: 19, onTime: 16, cancel: 1, noShow: 0,
       bidsPlaced: 64, bidsWon: 19, since: -d(540), hazmat: false,
@@ -99,7 +99,7 @@
 
     { id: 'U-T03', name: 'Pramod Jat', company: 'Marudhara Carriers',
       home: 'Jaipur', phone: '+91 99280 34410', email: null,
-      fleet: 4, types: ['open'], radius: 45, prefersSms: true,
+      fleet: 4, types: ['open'], radius: 400, prefersSms: true,
       docs: { gst: 'verified', pan: 'pending', rc: 'verified' },
       r: [4.2, 4.3, 4.1], count: 11, deliveries: 11, onTime: 9, cancel: 1, noShow: 0,
       bidsPlaced: 38, bidsWon: 11, since: -d(240), hazmat: false,

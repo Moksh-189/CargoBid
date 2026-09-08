@@ -152,6 +152,7 @@
     }
 
     function render(ctx) {
+      me = ctx.user;
       var t = q.transporter(me.id) || { docs: {} };
       var card = q.transporterCard(me.id);
       var trucks = q.trucksOf(me.id);

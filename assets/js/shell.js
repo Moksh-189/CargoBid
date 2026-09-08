@@ -66,8 +66,15 @@
       { key: 'fleet',       icon: 'ri-caravan-line',      label: 'Fleet',        href: 'transporter/fleet.html' },
       { key: 'trips',       icon: 'ri-route-line',        label: 'Trips',        href: 'transporter/trips.html',
         count: function (u) { return activeTrips(q.tripsOf(u.id)).length; } },
+      { section: 'Finance' },
+      { key: 'earnings',    icon: 'ri-funds-line',         label: 'Earnings',     href: 'transporter/earnings.html' },
+      { section: 'Network' },
       { key: 'messages',    icon: 'ri-chat-3-line',       label: 'Messages',     href: 'transporter/messages.html',
-        count: function (u) { return q.unreadCount(u.id); }, live: true }
+        count: function (u) { return q.unreadCount(u.id); }, live: true },
+      { key: 'disputes',    icon: 'ri-scales-3-line',     label: 'Disputes',     href: 'transporter/dispute.html',
+        count: function (u) { return safe(function () { return q.disputesForTransporter(u.id).filter(function (d) { return d.status !== 'admin_resolved' && d.status !== 'accepted'; }).length; }, 0); } },
+      { section: 'Account' },
+      { key: 'profile',     icon: 'ri-user-line',         label: 'Profile',      href: 'transporter/profile.html' }
     ]
   };
 
@@ -235,6 +242,27 @@
     });
 
     function userMenuHtml() {
+      /* Demo quick-switch: find the partner account for one-click role toggle */
+      var partnerAccs = [];
+      try { partnerAccs = CB.seed.accounts(role === 'shipper' ? 'transporter' : 'shipper') || []; } catch (e) {}
+      var partner = partnerAccs.filter(function (a) { return a.ex && a.ex.featured; })[0] || partnerAccs[0];
+      var partnerUser = partner ? CB.q.user(partner.id) : null;
+
+      var switchLink = '';
+      if (partnerUser) {
+        var destHome = CB.auth.home(partnerUser.role);
+        switchLink =
+          '<hr class="divider" style="margin:.5rem 0">' +
+          '<div style="padding:.25rem .75rem .5rem">' +
+            '<p class="t-small" style="color:var(--ink-3);margin-bottom:.4rem"><i class="ri-flashlight-fill"></i> Demo quick-switch</p>' +
+            '<button type="button" class="menu-item" style="width:100%" data-switch-to="' + partnerUser.id + '" data-switch-dest="' + destHome + '">' +
+              CB.ui.avatar(partnerUser.name, partnerUser.id, 'sm') +
+              '<span style="margin-left:.5rem;text-align:left"><span style="display:block;font-weight:600">' + esc((partnerUser.name || '').split(' ')[0]) + ' · ' + esc(partnerUser.company || '') + '</span>' +
+              '<span class="t-small" style="color:var(--ink-3)">Switch to ' + (partnerUser.role === 'shipper' ? 'shipper' : 'transporter') + ' view</span></span>' +
+            '</button>' +
+          '</div>';
+      }
+
       return '<div class="menu">' +
         '<div class="menu-head"><div class="row" style="gap:.625rem">' + CB.ui.avatar(user.name, user.id) +
           '<div><div style="font-weight:600">' + esc(user.name) + '</div>' +
@@ -242,17 +270,27 @@
         '<a class="menu-item" href="' + rel(role + '/dashboard.html') + '"><i class="ri-dashboard-3-line"></i>Dashboard</a>' +
         '<a class="menu-item" href="' + rel(role + '/messages.html') + '"><i class="ri-chat-3-line"></i>Messages</a>' +
         '<a class="menu-item" href="' + rel('index.html') + '"><i class="ri-home-4-line"></i>Marketing site</a>' +
+        '<a class="menu-item" href="' + rel('demo.html') + '"><i class="ri-layout-column-line"></i>Side-by-side demo</a>' +
+        switchLink +
         '<hr class="divider" style="margin:.5rem 0">' +
         '<button type="button" class="menu-item is-danger" data-signout><i class="ri-logout-box-r-line"></i>Sign out</button>' +
         '</div>';
     }
+
     function bindUserMenu(pop) {
       if (!pop) return;
       dom.on(pop, 'click', '[data-signout]', function () {
         CB.auth.signOut();
         window.location.href = rel('login.html');
       });
+      dom.on(pop, 'click', '[data-switch-to]', function () {
+        var userId = this.getAttribute('data-switch-to');
+        var dest = this.getAttribute('data-switch-dest') || '';
+        CB.auth.signIn(userId);
+        window.location.href = CB.handoff.tag(rel(dest), userId);
+      });
     }
+
     dom.on(document, 'click', '[data-pop="user"]',  function () { bindUserMenu(popover(this, userMenuHtml())); });
     dom.on(document, 'click', '[data-pop="user2"]', function () { bindUserMenu(popover(this, userMenuHtml())); });
 

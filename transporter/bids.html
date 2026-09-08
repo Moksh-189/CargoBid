@@ -74,7 +74,11 @@
     function inTab(b, key) { return key === 'all' ? true : bucket(b) === key; }
 
     function bidCard(b) {
-      var l = q.load(b.loadId); if (!l) return '';
+      var l = q.load(b.loadId);
+      if (!l) {
+        return '<div class="card"><div class="load-card-top"><div class="load-card-route">Load unavailable</div></div>' +
+          '<div class="load-card-body"><span class="chip chip-xs chip-warn"><i class="ri-error-warning-line"></i>The load this bid was placed on no longer exists.</span></div></div>';
+      }
       var st = CB.BID_STATUS[b.status] || { chip: 'chip', label: b.status };
       var low = q.lowestBid(l.id);
       var lead = b.status === 'active';
@@ -115,6 +119,7 @@
     }
 
     function render(ctx) {
+      me = ctx.user;
       var all = q.bidsOf(me.id);
       var tp = q.transporter(me.id) || {};
       var live = all.filter(function (b) { return bucket(b) === 'live'; });

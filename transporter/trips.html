@@ -91,7 +91,10 @@
         r.step.key === 'delivered' ? 'ok' : 'info');
     }
 
-    function render(ctx) { if (tripId) renderDetail(ctx); else renderList(ctx); }
+    function render(ctx) {
+      me = ctx.user;
+      if (tripId) renderDetail(ctx); else renderList(ctx);
+    }
 
     function progressPct(t) { return Math.round(doneCount(t) / t.checkpoints.length * 100); }
     function doneCount(t) { return t.checkpoints.filter(function (c) { return c.done; }).length; }
@@ -234,30 +237,79 @@
 
     function paymentCard(t) {
       if (!t.escrow) return '';
-      var st = CB.ESCROW_STATUS[t.escrow.status] || { label: 'Unknown', chip: 'chip' };
-      var out = '<div class="card"><div class="block-head"><h3>Escrow Payment</h3>' +
+      var e = t.escrow;
+      var st = CB.ESCROW_STATUS[e.status] || { label: 'Unknown', chip: 'chip' };
+      var fee = e.platformFee || CB.escrow.platformFee(t.amount);
+      var netSettlement = t.amount - fee;
+
+      /* stage progress: locked → advance_released → fully_released */
+      var stage = 0;
+      if (e.status === 'advance_released') stage = 1;
+      if (e.status === 'fully_released' || e.status === 'partial') stage = 2;
+      if (e.status === 'frozen') stage = -1;
+
+      function stageChip(s, idx, label) {
+        var done = stage >= idx || (stage === -1 && idx <= 1);
+        var active = stage === idx - 1 && stage !== -1;
+        var cls = done ? 'chip-ok' : (active ? 'chip-accent' : '');
+        var icon = done ? 'ri-check-line' : (active ? 'ri-time-line' : 'ri-lock-2-line');
+        return '<div style="text-align:center;flex:1">' +
+          '<div style="margin-bottom:.3rem"><span class="chip chip-xs ' + cls + '"><i class="' + icon + '"></i>' + esc(label) + '</span></div>' +
+        '</div>';
+      }
+
+      var out = '<div class="card"><div class="block-head"><h3>Payment & settlement</h3>' +
         '<span class="chip chip-sm ' + st.chip + '">' + esc(st.label) + '</span></div>';
-      out += '<div class="row" style="gap:1rem;margin-bottom:1rem">';
-      out += '<div style="flex:1"><strong>' + f.money(t.escrow.freightAmount) + '</strong><br><span class="t-small">Freight Amount</span></div>';
-      out += '<div style="flex:1;color:' + (t.escrow.advancePaid ? 'var(--ok)' : 'inherit') + '"><strong>' + f.money(t.escrow.advanceAmount) + '</strong><br><span class="t-small">70% Advance</span></div>';
-      out += '<div style="flex:1;color:' + (t.escrow.balancePaid ? 'var(--ok)' : 'inherit') + '"><strong>' + f.money(t.escrow.balanceAmount) + '</strong><br><span class="t-small">30% Balance</span></div>';
+
+      /* stage flow indicator */
+      out += '<div style="display:flex;align-items:flex-start;gap:.5rem;margin-bottom:1rem;padding:.75rem;' +
+        'background:var(--shade);border-radius:var(--r-tight)">' +
+        stageChip(e.status, 0, 'Funds locked') +
+        '<div style="flex:0 0 auto;width:24px;height:2px;background:var(--line);margin-top:10px"></div>' +
+        stageChip(e.status, 1, '70% advance') +
+        '<div style="flex:0 0 auto;width:24px;height:2px;background:var(--line);margin-top:10px"></div>' +
+        stageChip(e.status, 2, 'Settled') +
+        '</div>';
+
+      /* money breakdown */
+      out += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:1rem">';
+      out += '<div style="padding:.65rem;background:var(--shade);border-radius:var(--r-tight)">' +
+        '<div class="t-small" style="color:var(--ink-3)">Freight agreed</div>' +
+        '<div class="t-num" style="font-weight:650;font-size:1.05rem">' + f.money(e.freightAmount || t.amount) + '</div>' +
+        '</div>';
+      out += '<div style="padding:.65rem;background:var(--shade);border-radius:var(--r-tight)">' +
+        '<div class="t-small" style="color:var(--ink-3)">Net to you (after 2.5%)</div>' +
+        '<div class="t-num" style="font-weight:650;font-size:1.05rem;color:var(--ok)">' + f.money(netSettlement) + '</div>' +
+        '</div>';
       out += '</div>';
 
-      /* Demurrage info */
+      out += ui.kv([
+        ['Platform fee (2.5%)', f.money(fee)],
+        ['70% advance', f.money(e.advanceAmount) + (e.advancePaid ? ' <span class="chip chip-xs chip-ok">Paid</span>' : ' <span class="chip chip-xs">Pending</span>')],
+        ['30% balance',  f.money(e.balanceAmount) + (e.balancePaid  ? ' <span class="chip chip-xs chip-ok">Paid</span>' : ' <span class="chip chip-xs">Pending</span>')]
+      ]);
+
+      /* demurrage */
       if (t.status === 'at-drop' && CB.escrow.currentDemurrage) {
         var dem = CB.escrow.currentDemurrage(t);
         if (dem.amount > 0) {
-          out += '<p class="t-small" style="color:var(--error);margin-top:1rem"><i class="ri-timer-flash-line"></i> <strong>Demurrage triggered:</strong> ' + f.money(dem.amount) + ' penalty accumulating.</p>';
+          out += '<p class="t-small" style="color:var(--stop);margin-top:.75rem"><i class="ri-timer-flash-line"></i> <strong>Demurrage triggered:</strong> ' + f.money(dem.amount) + ' penalty accumulating.</p>';
         } else {
-          out += '<p class="t-small" style="margin-top:1rem"><i class="ri-timer-line"></i> Free waiting time remaining: <strong>' + dem.freeLeft + ' hrs</strong>. Deliver soon to avoid demurrage penalties.</p>';
+          out += '<p class="t-small" style="margin-top:.75rem"><i class="ri-timer-line"></i> Free waiting time remaining: <strong>' + dem.freeLeft + ' hrs</strong>. Deliver soon to avoid penalties.</p>';
         }
       }
 
-      if (t.escrow.disputeId) {
-        out += '<div class="notice notice-stop"><i class="ri-scales-3-line"></i><div><strong>Dispute raised</strong><br>Shipper has raised a dispute. Payment is frozen. <a href="dispute.html?id=' + t.escrow.disputeId + '">View dispute</a></div></div>';
+      /* dispute notice */
+      if (e.disputeId) {
+        out += '<div class="notice notice-stop" style="margin-top:.75rem"><i class="ri-scales-3-line"></i><div><strong>Dispute raised — payment frozen.</strong> <a href="dispute.html?id=' + e.disputeId + '">View dispute →</a></div></div>';
       }
+
+      /* earnings link */
+      out += '<a class="btn btn-outline btn-block" href="earnings.html" style="margin-top:.85rem"><i class="ri-funds-line"></i>View earnings ledger</a>';
+
       return out + '</div>';
     }
+
 
     function trackingCard(t) {
       if (!CB.tracking) return '';

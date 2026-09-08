@@ -49,7 +49,10 @@
       input.value = '';
     });
 
-    function render(ctx) { if (disputeId) renderDetail(ctx); else renderList(ctx); }
+    function render(ctx) {
+      me = ctx.user;
+      if (disputeId) renderDetail(ctx); else renderList(ctx);
+    }
 
     function renderList(ctx) {
       ctx.setTitle('Disputes');

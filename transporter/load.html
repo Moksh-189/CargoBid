@@ -213,6 +213,7 @@
     }
 
     function render(ctx) {
+      me = ctx.user;
       var l = q.load(loadId());
       if (!l) { notFound(); return; }
 

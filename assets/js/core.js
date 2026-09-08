@@ -468,6 +468,28 @@
     try {
       var parsed = JSON.parse(raw);
       if (!parsed || parsed.v !== CB.VERSION) return false;
+      /* Patch in any keys that were added after this snapshot was saved
+         (e.g. disputes, seq.dispute) so downstream code never hits undefined. */
+      var defaults = CB.emptyDb();
+      Object.keys(defaults).forEach(function (k) {
+        if (parsed[k] === undefined) parsed[k] = defaults[k];
+      });
+      if (parsed.seq && defaults.seq) {
+        Object.keys(defaults.seq).forEach(function (k) {
+          if (parsed.seq[k] === undefined) parsed.seq[k] = defaults.seq[k];
+        });
+      }
+      /* Schema migration: patch demo transporter radii so Jaipur-based
+         carriers see all pan-India loads without needing "Show out-of-range".
+         Applied on every load so existing browser sessions benefit immediately. */
+      var WIDE_RADIUS = { 'U-T01': 400, 'U-T02': 400, 'U-T03': 400 };
+      if (parsed.transporters) {
+        parsed.transporters.forEach(function (t) {
+          if (WIDE_RADIUS[t.userId] && t.radiusKm < WIDE_RADIUS[t.userId]) {
+            t.radiusKm = WIDE_RADIUS[t.userId];
+          }
+        });
+      }
       CB.db = parsed;
       anchorReal = realNow();
       return true;
@@ -476,6 +498,7 @@
       return false;
     }
   };
+
 
   var saveTimer = null;
   CB.save = function (opts) {
@@ -1451,10 +1474,10 @@
 
   /* ---- disputes -------------------------------------------------------- */
 
-  q.dispute = function (id) { return CB.db.disputes.find(function (d) { return d.id === id; }); };
-  q.disputesForShipper = function (id) { return CB.db.disputes.filter(function (d) { return d.shipperId === id; }); };
-  q.disputesForTransporter = function (id) { return CB.db.disputes.filter(function (d) { return d.transporterId === id; }); };
-  q.allDisputes = function () { return CB.db.disputes.slice(); };
+  q.dispute = function (id) { return (CB.db.disputes || []).find(function (d) { return d.id === id; }); };
+  q.disputesForShipper = function (id) { return (CB.db.disputes || []).filter(function (d) { return d.shipperId === id; }); };
+  q.disputesForTransporter = function (id) { return (CB.db.disputes || []).filter(function (d) { return d.transporterId === id; }); };
+  q.allDisputes = function () { return (CB.db.disputes || []).slice(); };
 
   act.raiseDispute = function (tripId, reason, amountClaimed) {
     var trip = q.trip(tripId);

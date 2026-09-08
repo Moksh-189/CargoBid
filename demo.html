@@ -1,0 +1,495 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Live Demo · CargoBid</title>
+  <meta name="description" content="CargoBid two-sided marketplace live demo — watch a shipper post a load and a transporter bid on it in real time.">
+  <meta name="theme-color" content="#0D0F17">
+  <link rel="icon" href="assets/img/logo.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300..700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.5.0/fonts/remixicon.css" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --ink: #0D0F17;
+      --ink-2: #3B4058;
+      --ink-3: #8B93A7;
+      --accent: #8DB0F4;
+      --accent-deep: #3A63C4;
+      --ok: #1A8A50;
+      --warn: #B06B14;
+      --surface: #ffffff;
+      --line: #E3E8F5;
+      --font: 'Geist', system-ui, sans-serif;
+      --mono: 'Geist Mono', ui-monospace, monospace;
+    }
+
+    html, body { height: 100%; overflow: hidden; background: #0D0F17; font-family: var(--font); color: var(--surface); }
+
+    /* ---- Header bar ---- */
+    .demo-header {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      height: 52px;
+      background: rgba(13, 15, 23, 0.95);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(255,255,255,.08);
+      display: flex; align-items: center; gap: 1.25rem; padding: 0 1.25rem;
+    }
+
+    .demo-logo {
+      display: flex; align-items: center; gap: .5rem;
+      font: 650 1rem/1 var(--font); color: #fff; text-decoration: none;
+      flex-shrink: 0;
+    }
+    .demo-logo i { color: var(--accent); font-size: 1.2rem; }
+
+    .demo-badge {
+      font: 600 .625rem/1 var(--font); letter-spacing: .07em; text-transform: uppercase;
+      padding: .2rem .45rem; border-radius: 4px;
+      background: rgba(141,176,244,.15); color: var(--accent);
+      border: 1px solid rgba(141,176,244,.25);
+    }
+
+    .demo-sep { flex: 1; }
+
+    .demo-steps {
+      display: flex; align-items: center; gap: .25rem;
+      font: 500 .75rem/1 var(--font); color: var(--ink-3);
+    }
+    .demo-step {
+      display: flex; align-items: center; gap: .35rem;
+      padding: .3rem .6rem; border-radius: 6px;
+      cursor: pointer; transition: background .15s;
+      user-select: none;
+    }
+    .demo-step:hover { background: rgba(255,255,255,.06); color: #fff; }
+    .demo-step.active { background: rgba(141,176,244,.15); color: var(--accent); }
+    .demo-step.done { color: #5AD08C; }
+    .demo-step i { font-size: .875rem; }
+    .demo-arrow { color: rgba(255,255,255,.2); font-size: .75rem; }
+
+    .demo-hint {
+      font: 500 .75rem/1 var(--font-mono, monospace);
+      padding: .3rem .6rem;
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 6px;
+      color: var(--ink-3);
+    }
+    .demo-hint kbd { font-family: inherit; color: #fff; }
+
+    /* ---- Split panes ---- */
+    .demo-split {
+      position: fixed; top: 52px; left: 0; right: 0; bottom: 0;
+      display: grid; grid-template-columns: 1fr 1px 1fr;
+    }
+
+    .demo-pane { position: relative; overflow: hidden; display: flex; flex-direction: column; }
+
+    .pane-header {
+      height: 36px; flex-shrink: 0;
+      display: flex; align-items: center; gap: .625rem; padding: 0 .875rem;
+      background: rgba(255,255,255,.04);
+      border-bottom: 1px solid rgba(255,255,255,.06);
+    }
+    .pane-role {
+      font: 650 .75rem/1 var(--font); text-transform: uppercase; letter-spacing: .06em;
+    }
+    .pane-role.shipper { color: #8DB0F4; }
+    .pane-role.transporter { color: #5AD08C; }
+    .pane-user { font: 400 .75rem/1 var(--font); color: var(--ink-3); }
+    .pane-live { width: 6px; height: 6px; border-radius: 999px; background: #5AD08C; margin-left: auto;
+      box-shadow: 0 0 0 0 rgba(90,208,140,.5); animation: pulse 2s infinite; }
+    @keyframes pulse { 70% { box-shadow: 0 0 0 5px rgba(90,208,140,0); } 100% { box-shadow: 0 0 0 0 rgba(90,208,140,0); } }
+
+    .pane-nav {
+      display: flex; align-items: center; gap: .25rem; padding: .35rem .875rem;
+      background: rgba(255,255,255,.02);
+      border-bottom: 1px solid rgba(255,255,255,.04);
+      flex-shrink: 0;
+    }
+    .pane-nav-btn {
+      font: 500 .75rem/1 var(--font); padding: .3rem .6rem; border-radius: 5px;
+      cursor: pointer; color: var(--ink-3); background: transparent;
+      border: 1px solid transparent;
+      text-decoration: none; display: inline-flex; align-items: center; gap: .3rem;
+      transition: all .15s;
+    }
+    .pane-nav-btn:hover { color: #fff; border-color: rgba(255,255,255,.12); background: rgba(255,255,255,.06); }
+    .pane-nav-btn.active { color: #fff; background: rgba(255,255,255,.1); border-color: rgba(255,255,255,.15); }
+    .pane-nav-btn i { font-size: .8rem; }
+
+    .pane-frame-wrap { flex: 1; position: relative; overflow: hidden; }
+    iframe {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+      border: none; background: #fff;
+    }
+
+    .demo-divider { background: rgba(255,255,255,.08); }
+
+    /* ---- Floating event log ---- */
+    .event-log {
+      position: fixed; bottom: 1rem; left: 50%; transform: translateX(-50%);
+      z-index: 200; width: min(440px, calc(100vw - 2rem));
+      background: rgba(13, 15, 23, 0.96);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 24px 60px -20px rgba(0,0,0,.8);
+    }
+    .event-log-head {
+      display: flex; align-items: center; gap: .5rem; padding: .5rem .75rem;
+      border-bottom: 1px solid rgba(255,255,255,.06);
+    }
+    .event-log-head span { font: 600 .75rem/1 var(--font); color: rgba(255,255,255,.5); letter-spacing: .06em; text-transform: uppercase; }
+    .event-log-close { margin-left: auto; cursor: pointer; color: rgba(255,255,255,.4); font-size: 1.1rem; line-height: 1; }
+    .event-log-close:hover { color: #fff; }
+    .event-log-body { padding: .5rem .75rem; max-height: 140px; overflow-y: auto; display: flex; flex-direction: column; gap: .3rem; }
+    .event-row { display: flex; align-items: flex-start; gap: .5rem; font: .72rem/1.4 var(--mono); }
+    .event-time { color: rgba(255,255,255,.3); flex-shrink: 0; }
+    .event-text { color: rgba(255,255,255,.75); }
+    .event-kind { width: 8px; height: 8px; border-radius: 999px; flex-shrink: 0; margin-top: 3px; }
+    .event-kind.load { background: #8DB0F4; }
+    .event-kind.bid { background: #F4A23A; }
+    .event-kind.trip { background: #5AD08C; }
+    .event-kind.info { background: rgba(255,255,255,.3); }
+
+    /* ---- Guide panel ---- */
+    .guide-panel {
+      position: fixed; right: 1rem; top: 64px; z-index: 150;
+      width: 280px;
+      background: rgba(13,15,23,0.97);
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 24px 60px -20px rgba(0,0,0,.8);
+      display: none;
+    }
+    .guide-panel.open { display: block; animation: slideIn .2s ease; }
+    @keyframes slideIn { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:none; } }
+    .guide-head {
+      display: flex; align-items: center; gap: .5rem;
+      padding: .65rem .875rem; border-bottom: 1px solid rgba(255,255,255,.06);
+    }
+    .guide-head strong { font: 650 .875rem/1 var(--font); flex: 1; }
+    .guide-close { cursor: pointer; color: rgba(255,255,255,.4); font-size: 1.1rem; line-height: 1; }
+    .guide-close:hover { color: #fff; }
+    .guide-body { padding: .75rem .875rem; max-height: 70vh; overflow-y: auto; }
+    .guide-step {
+      display: flex; gap: .6rem; padding: .45rem 0;
+      border-bottom: 1px solid rgba(255,255,255,.04);
+      font: .8rem/1.5 var(--font); color: rgba(255,255,255,.6);
+    }
+    .guide-step:last-child { border-bottom: none; }
+    .guide-num {
+      width: 20px; height: 20px; border-radius: 999px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font: 700 .65rem/1 var(--font); background: rgba(141,176,244,.2); color: var(--accent);
+      margin-top: 1px;
+    }
+    .guide-step.done .guide-num { background: rgba(90,208,140,.2); color: #5AD08C; }
+    .guide-step.done .guide-text { color: rgba(255,255,255,.3); text-decoration: line-through; }
+    .guide-text { flex: 1; }
+    .guide-side { font: 700 .6rem/1 var(--font); text-transform: uppercase; letter-spacing: .06em; margin-right: .3rem; }
+    .guide-side.s { color: #8DB0F4; }
+    .guide-side.t { color: #5AD08C; }
+
+    /* ---- Buttons in header ---- */
+    .hbtn {
+      display: inline-flex; align-items: center; gap: .35rem;
+      padding: .3rem .65rem; border-radius: 7px;
+      font: 550 .75rem/1 var(--font);
+      cursor: pointer; border: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.06); color: rgba(255,255,255,.7);
+      text-decoration: none; transition: all .15s; white-space: nowrap;
+    }
+    .hbtn:hover { background: rgba(255,255,255,.12); color: #fff; }
+    .hbtn i { font-size: .875rem; }
+    .hbtn.primary { background: var(--accent-deep); border-color: var(--accent-deep); color: #fff; }
+    .hbtn.primary:hover { background: #4a72d8; }
+
+    @media (max-width: 700px) {
+      .demo-split { grid-template-columns: 1fr; grid-template-rows: 1fr 1px 1fr; }
+      .demo-steps, .demo-hint { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ====================================================================
+     HEADER
+     ==================================================================== -->
+<header class="demo-header">
+  <a class="demo-logo" href="index.html">
+    <i class="ri-truck-line"></i>CargoBid
+  </a>
+  <span class="demo-badge">Live demo</span>
+
+  <div class="demo-steps" id="step-bar">
+    <div class="demo-step active" data-step="0"><i class="ri-add-box-line"></i>Post load</div>
+    <span class="demo-arrow">›</span>
+    <div class="demo-step" data-step="1"><i class="ri-auction-line"></i>Bid</div>
+    <span class="demo-arrow">›</span>
+    <div class="demo-step" data-step="2"><i class="ri-award-line"></i>Award</div>
+    <span class="demo-arrow">›</span>
+    <div class="demo-step" data-step="3"><i class="ri-truck-line"></i>Trip</div>
+    <span class="demo-arrow">›</span>
+    <div class="demo-step" data-step="4"><i class="ri-funds-line"></i>Settled</div>
+  </div>
+
+  <div class="demo-sep"></div>
+
+  <span class="demo-hint" id="current-hint">← Shipper: post a new load</span>
+  <button class="hbtn" id="guide-toggle"><i class="ri-map-2-line"></i>Guide</button>
+  <a class="hbtn primary" href="login.html"><i class="ri-login-box-line"></i>Sign in separately</a>
+</header>
+
+<!-- ====================================================================
+     SPLIT PANES
+     ==================================================================== -->
+<div class="demo-split">
+
+  <!-- SHIPPER pane -->
+  <div class="demo-pane" id="pane-shipper">
+    <div class="pane-header">
+      <i class="ri-inbox-archive-line" style="color:#8DB0F4;font-size:.875rem"></i>
+      <span class="pane-role shipper">Shipper</span>
+      <span class="pane-user" id="sh-user-label">Rakesh Sharma · Sharma Steel Traders</span>
+      <div class="pane-live"></div>
+    </div>
+    <div class="pane-nav" id="sh-nav">
+      <a class="pane-nav-btn active" href="#" data-sh-page="shipper/dashboard.html"><i class="ri-dashboard-3-line"></i>Dashboard</a>
+      <a class="pane-nav-btn" href="#" data-sh-page="shipper/loads.html"><i class="ri-inbox-2-line"></i>My loads</a>
+      <a class="pane-nav-btn" href="#" data-sh-page="shipper/post-load.html"><i class="ri-add-box-line"></i>Post load</a>
+      <a class="pane-nav-btn" href="#" data-sh-page="shipper/trips.html"><i class="ri-route-line"></i>Trips</a>
+      <a class="pane-nav-btn" href="#" data-sh-page="shipper/escrow.html"><i class="ri-lock-2-line"></i>Escrow</a>
+    </div>
+    <div class="pane-frame-wrap">
+      <iframe id="sh-frame" title="Shipper view" src="shipper/dashboard.html"></iframe>
+    </div>
+  </div>
+
+  <div class="demo-divider"></div>
+
+  <!-- TRANSPORTER pane -->
+  <div class="demo-pane" id="pane-transporter">
+    <div class="pane-header">
+      <i class="ri-truck-line" style="color:#5AD08C;font-size:.875rem"></i>
+      <span class="pane-role transporter">Transporter</span>
+      <span class="pane-user" id="tp-user-label">Vikram Singh · Singh Roadways</span>
+      <div class="pane-live"></div>
+    </div>
+    <div class="pane-nav" id="tp-nav">
+      <a class="pane-nav-btn active" href="#" data-tp-page="transporter/dashboard.html"><i class="ri-dashboard-3-line"></i>Dashboard</a>
+      <a class="pane-nav-btn" href="#" data-tp-page="transporter/marketplace.html"><i class="ri-store-2-line"></i>Marketplace</a>
+      <a class="pane-nav-btn" href="#" data-tp-page="transporter/bids.html"><i class="ri-auction-line"></i>My bids</a>
+      <a class="pane-nav-btn" href="#" data-tp-page="transporter/trips.html"><i class="ri-route-line"></i>Trips</a>
+      <a class="pane-nav-btn" href="#" data-tp-page="transporter/earnings.html"><i class="ri-funds-line"></i>Earnings</a>
+    </div>
+    <div class="pane-frame-wrap">
+      <iframe id="tp-frame" title="Transporter view" src="transporter/dashboard.html"></iframe>
+    </div>
+  </div>
+</div>
+
+<!-- ====================================================================
+     GUIDE PANEL
+     ==================================================================== -->
+<div class="guide-panel" id="guide-panel">
+  <div class="guide-head">
+    <i class="ri-map-2-line" style="color:var(--accent)"></i>
+    <strong>Demo walkthrough</strong>
+    <span class="guide-close" id="guide-close">×</span>
+  </div>
+  <div class="guide-body" id="guide-steps">
+    <!-- populated by JS -->
+  </div>
+</div>
+
+<!-- ====================================================================
+     EVENT LOG (BroadcastChannel listener)
+     ==================================================================== -->
+<div class="event-log" id="event-log" style="display:none">
+  <div class="event-log-head">
+    <span>Live events</span>
+    <span class="event-log-close" id="log-close">×</span>
+  </div>
+  <div class="event-log-body" id="log-body"></div>
+</div>
+
+<script src="assets/js/core.js"></script>
+<script src="assets/js/seed.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  /* ---- boot CB so we can read events ---- */
+  CB.boot();
+
+  /* ---- session auto-sign-in: set shipper and transporter sessions in each frame ---- */
+  var SH_USER = 'U-S01'; /* rakesh */
+  var TP_USER = 'U-T01'; /* vikram */
+
+  /* The iframes share localStorage but each has its own sessionStorage.
+     We drive each iframe to their role-correct login URL with ?as= so
+     they end up signed in as the right user automatically. */
+  var shFrame = document.getElementById('sh-frame');
+  var tpFrame = document.getElementById('tp-frame');
+
+  function frameUrl(page, userId) {
+    return page + (page.indexOf('?') > -1 ? '&' : '?') + 'as=' + userId;
+  }
+
+  /* Sign both users in so they persist across frame navigations */
+  CB.db.session.userId = SH_USER;
+  CB.save({ now: true, silent: true });
+
+  /* Navigate shipper frame */
+  shFrame.src = frameUrl('shipper/dashboard.html', SH_USER);
+
+  /* We need to sign vikram in as well. Since session is shared,
+     we sign in vikram, save, navigate tp frame, then restore shipper session. */
+  setTimeout(function () {
+    CB.db.session.userId = TP_USER;
+    CB.save({ now: true, silent: true });
+    tpFrame.src = frameUrl('transporter/dashboard.html', TP_USER);
+    /* Restore the "last active" session to shipper */
+    setTimeout(function () {
+      CB.db.session.userId = SH_USER;
+      CB.save({ now: true, silent: true });
+    }, 200);
+  }, 100);
+
+  /* ---- Pane nav ---- */
+  function bindNav(attr, frame, userId) {
+    document.addEventListener('click', function (e) {
+      var btn = e.target.closest('[data-' + attr + '-page]');
+      if (!btn) return;
+      e.preventDefault();
+      var page = btn.getAttribute('data-' + attr + '-page');
+      /* set session for this role, then navigate */
+      CB.db.session.userId = userId;
+      CB.save({ now: true, silent: true });
+      frame.src = frameUrl(page, userId);
+      /* update active state */
+      var navEl = btn.closest('.pane-nav');
+      if (navEl) {
+        navEl.querySelectorAll('.pane-nav-btn').forEach(function (b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+      }
+      /* after nav, restore session for the other side if needed */
+      setTimeout(function () {
+        /* leave session pointing to whichever tab is "active" — both iframes use ?as= so they're fine */
+      }, 300);
+    });
+  }
+  bindNav('sh', shFrame, SH_USER);
+  bindNav('tp', tpFrame, TP_USER);
+
+  /* ---- Guide ---- */
+  var STEPS = [
+    { step: 0, side: 's', text: 'Post a new load: Jaipur → Delhi, Steel, 20t, ₹50,000' },
+    { step: 0, side: 't', text: 'Open Marketplace — the load appears immediately' },
+    { step: 1, side: 't', text: 'Click the load → Place bid: ₹47,500' },
+    { step: 2, side: 's', text: 'Open My Loads → see "Singh Roadways ₹47,500"' },
+    { step: 2, side: 's', text: 'Click Accept bid' },
+    { step: 3, side: 't', text: 'Bids page → see "BID ACCEPTED"' },
+    { step: 3, side: 't', text: 'Open trip → advance checkpoints (OTP: 1234)' },
+    { step: 3, side: 's', text: 'Trips page → status updates live across both sides' },
+    { step: 4, side: 't', text: 'Mark delivered → upload POD' },
+    { step: 4, side: 's', text: 'Rate the carrier (⭐ ⭐ ⭐ ⭐ ⭐)' },
+    { step: 4, side: 't', text: 'Earnings page → ₹47,500 gross, ₹46,525 net (2.5% fee)' }
+  ];
+
+  var guideEl = document.getElementById('guide-steps');
+  guideEl.innerHTML = STEPS.map(function (s, i) {
+    var sideClass = s.side === 's' ? 's' : 't';
+    var sideLabel = s.side === 's' ? 'Shipper' : 'Transporter';
+    return '<div class="guide-step" id="gs-' + i + '">' +
+      '<div class="guide-num">' + (i + 1) + '</div>' +
+      '<div class="guide-text"><span class="guide-side ' + sideClass + '">' + sideLabel + '</span>' + s.text + '</div>' +
+    '</div>';
+  }).join('');
+
+  document.getElementById('guide-toggle').addEventListener('click', function () {
+    document.getElementById('guide-panel').classList.toggle('open');
+  });
+  document.getElementById('guide-close').addEventListener('click', function () {
+    document.getElementById('guide-panel').classList.remove('open');
+  });
+
+  /* ---- Demo step bar ---- */
+  var HINTS = [
+    '← Shipper: click Post load and fill in the form',
+    'Transporter: open Marketplace → find the new load → place a bid →',
+    '← Shipper: open My Loads → accept Singh Roadways\'s bid',
+    'Transporter: see bid accepted → advance the trip checkpoints →',
+    '← Both sides: delivery confirmed, POD captured, earnings settled'
+  ];
+
+  document.getElementById('step-bar').addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-step]');
+    if (!btn) return;
+    var n = Number(btn.getAttribute('data-step'));
+    document.querySelectorAll('.demo-step').forEach(function (s, i) {
+      s.classList.toggle('active', i === n);
+    });
+    document.getElementById('current-hint').textContent = HINTS[n] || '';
+  });
+
+  /* ---- Event log via BroadcastChannel ---- */
+  var logEl = document.getElementById('event-log');
+  var logBody = document.getElementById('log-body');
+  var events = [];
+
+  function kindClass(text) {
+    if (/posted|load/i.test(text)) return 'load';
+    if (/bid/i.test(text)) return 'bid';
+    if (/trip|advance|deliver/i.test(text)) return 'trip';
+    return 'info';
+  }
+
+  function addEvent(text) {
+    var t = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+    events.unshift({ t: t, text: text, kind: kindClass(text) });
+    if (events.length > 30) events.pop();
+
+    logBody.innerHTML = events.map(function (e) {
+      return '<div class="event-row">' +
+        '<div class="event-kind ' + e.kind + '"></div>' +
+        '<span class="event-time">' + e.t + '</span>' +
+        '<span class="event-text">' + e.text + '</span>' +
+      '</div>';
+    }).join('');
+
+    logEl.style.display = 'block';
+  }
+
+  /* Listen to CB events from iframes (same origin) */
+  try {
+    var bc = new BroadcastChannel('cargobid');
+    bc.onmessage = function (e) {
+      if (e.data && e.data.type === 'db') {
+        CB.load();
+        var ev = CB.db.events;
+        if (ev && ev.length) {
+          var last = ev[ev.length - 1];
+          addEvent(last.text || '');
+        }
+      }
+    };
+  } catch (ex) {}
+
+  document.getElementById('log-close').addEventListener('click', function () {
+    logEl.style.display = 'none';
+  });
+
+}());
+</script>
+</body>
+</html>
