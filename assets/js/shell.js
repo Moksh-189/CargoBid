@@ -50,6 +50,8 @@
       { key: 'escrow',       icon: 'ri-wallet-3-line',    label: 'Escrow Ledger',href: 'shipper/escrow.html' },
       { section: 'Network' },
       { key: 'transporters', icon: 'ri-team-line',        label: 'Transporters', href: 'shipper/transporters.html' },
+      { key: 'disputes',     icon: 'ri-scales-3-line',    label: 'Disputes',     href: 'shipper/dispute.html',
+        count: function (u) { return q.disputesForShipper(u.id).filter(function(d) { return d.status !== 'admin_resolved'; }).length; } },
       { key: 'messages',     icon: 'ri-chat-3-line',      label: 'Messages',     href: 'shipper/messages.html',
         count: function (u) { return q.unreadCount(u.id); }, live: true }
     ],
@@ -69,10 +71,10 @@
       { section: 'Finance' },
       { key: 'earnings',    icon: 'ri-funds-line',         label: 'Earnings',     href: 'transporter/earnings.html' },
       { section: 'Network' },
-      { key: 'messages',    icon: 'ri-chat-3-line',       label: 'Messages',     href: 'transporter/messages.html',
-        count: function (u) { return q.unreadCount(u.id); }, live: true },
       { key: 'disputes',    icon: 'ri-scales-3-line',     label: 'Disputes',     href: 'transporter/dispute.html',
         count: function (u) { return safe(function () { return q.disputesForTransporter(u.id).filter(function (d) { return d.status !== 'admin_resolved' && d.status !== 'accepted'; }).length; }, 0); } },
+      { key: 'messages',    icon: 'ri-chat-3-line',       label: 'Messages',     href: 'transporter/messages.html',
+        count: function (u) { return q.unreadCount(u.id); }, live: true },
       { section: 'Account' },
       { key: 'profile',     icon: 'ri-user-line',         label: 'Profile',      href: 'transporter/profile.html' }
     ]

@@ -32,7 +32,7 @@
     'use strict';
     var dom = CB.dom, esc = CB.util.esc, f = CB.fmt, q = CB.q, ui = CB.ui, act = CB.act;
     var disputeId = CB.param('id');
-    var me; // assigned after mount returns
+    var me;
     
     var ctx = CB.shell.mount({
       role: 'shipper', nav: 'disputes', title: disputeId ? 'Dispute' : 'Disputes', live: true, render: render
@@ -40,6 +40,7 @@
     if (!ctx) return;
     me = ctx.user;
 
+    /* --- event handlers --- */
     dom.on(ctx.main, 'submit', '#msg-form', function (e) {
       e.preventDefault();
       var input = dom.$('#msg-input', ctx.main);
@@ -47,6 +48,30 @@
       if (!text || !disputeId) return;
       act.addDisputeMessage(disputeId, me.id, text);
       input.value = '';
+    });
+
+    /* Resolve: release full 30% balance to transporter */
+    dom.on(ctx.main, 'click', '#resolve-full', function () {
+      if (!confirm('Release the full remaining 30% balance to the transporter?')) return;
+      act.addDisputeMessage(disputeId, me.id, 'Shipper accepted. Full balance released to transporter.', 'admin_resolved');
+      act.resolveDispute(disputeId, 100);
+    });
+
+    /* Resolve: partial deduction — custom % via prompt */
+    dom.on(ctx.main, 'click', '#resolve-partial', function () {
+      var pct = prompt('What % of the remaining 30% balance should the transporter receive?\n\nExample: 50 means transporter gets half, you get half refunded.', '50');
+      if (pct === null) return;
+      pct = Math.max(0, Math.min(100, parseInt(pct, 10)));
+      if (isNaN(pct)) { alert('Please enter a valid number.'); return; }
+      act.addDisputeMessage(disputeId, me.id, 'Shipper resolved: ' + pct + '% of remaining balance to transporter, ' + (100 - pct) + '% refunded.', 'admin_resolved');
+      act.resolveDispute(disputeId, pct);
+    });
+
+    /* Resolve: full deduction — 0% to transporter, 100% refund */
+    dom.on(ctx.main, 'click', '#resolve-deduct', function () {
+      if (!confirm('Deduct the ENTIRE remaining 30% balance? The transporter gets nothing.')) return;
+      act.addDisputeMessage(disputeId, me.id, 'Shipper deducted full balance. Transporter receives nothing from the remaining 30%.', 'admin_resolved');
+      act.resolveDispute(disputeId, 0);
     });
 
     function render(ctx) { if (disputeId) renderDetail(ctx); else renderList(ctx); }
@@ -72,6 +97,28 @@
             '</a>';
           }).join('') : ui.empty('ri-scales-3-line', 'No disputes', 'You have no active disputes. Your escrows are clear.')) +
         '</div>';
+    }
+
+    function resolvePanel(d, t) {
+      if (d.status === 'admin_resolved') {
+        var paid = t && t.escrow && t.escrow.ledger ? t.escrow.ledger.filter(function(e) { return e.event === 'partial_payout'; }) : [];
+        return '<div class="card" style="border:2px solid var(--ok);background:var(--ok-bg,#f0fdf4)">' +
+          '<div class="block-head"><h3><i class="ri-check-double-line" style="color:var(--ok)"></i> Resolved</h3></div>' +
+          '<p class="t-small" style="color:var(--ink-2)">This dispute has been settled.' +
+          (paid.length ? ' ' + paid[0].note : '') + '</p></div>';
+      }
+      var bal = t && t.escrow ? f.money(t.escrow.balanceAmount) : '—';
+      return '<div class="card">' +
+        '<div class="block-head"><h3>Resolve Dispute</h3></div>' +
+        '<p class="t-small" style="margin-bottom:1rem;color:var(--ink-2)">Remaining 30% balance at stake: <strong>' + bal + '</strong></p>' +
+        '<div style="display:flex;flex-direction:column;gap:.5rem">' +
+          '<button id="resolve-full" class="btn btn-block" style="background:var(--ok);border-color:var(--ok);font-size:0.875rem;padding:0.6rem;white-space:normal">' +
+            '<i class="ri-check-line"></i> Release Full Balance</button>' +
+          '<button id="resolve-partial" class="btn btn-outline btn-block" style="font-size:0.875rem;padding:0.6rem;white-space:normal">' +
+            '<i class="ri-percent-line"></i> Partial Deduction</button>' +
+          '<button id="resolve-deduct" class="btn btn-block" style="background:var(--error);border-color:var(--error);font-size:0.875rem;padding:0.6rem;white-space:normal">' +
+            '<i class="ri-close-line"></i> Deduct Full Balance</button>' +
+        '</div></div>';
     }
 
     function renderDetail(ctx) {
@@ -128,7 +175,7 @@
               ['Escrow Balance', t && t.escrow ? f.money(t.escrow.balanceAmount) : '—']
             ]) +
           '</div>' +
-          '<div class="notice notice-info"><i class="ri-information-line"></i><div><strong>Escrow Frozen</strong><br>The balance payment for this trip is locked until this dispute is resolved or escalated to CargoBid Admin.</div></div>' +
+          resolvePanel(d, t) +
         '</div></div>';
     }
   }());
