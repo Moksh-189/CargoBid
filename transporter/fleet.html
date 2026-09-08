@@ -32,65 +32,70 @@
     'use strict';
     var dom = CB.dom, esc = CB.util.esc, f = CB.fmt, q = CB.q, ui = CB.ui, act = CB.act;
 
-    var ctx = CB.shell.mount({ role: 'transporter', nav: 'fleet', title: 'Fleet', live: true, render: render });
-    if (!ctx) return;
-    var me = ctx.user;
-
-    /* ---- delegated actions ---- */
-    dom.on(ctx.main, 'click', '#add-truck', function () { openAddTruck(); });
-    dom.on(ctx.main, 'click', '[data-set-status]', function () {
-      var id = this.getAttribute('data-truck'), s = this.getAttribute('data-set-status');
-      var r = act.setTruckStatus(id, s);
-      if (r && r.error) { CB.toast(r.error, 'warn'); return; }
-      CB.toast(s === 'idle' ? 'Marked available' : 'Taken off duty', s === 'idle' ? 'ok' : 'info');
-    });
-    dom.on(ctx.main, 'click', '[data-upload]', function () {
-      var kind = this.getAttribute('data-upload');
-      var r = act.uploadDoc(me.id, kind, kind + '-scan.pdf');
-      if (r && r.error) { CB.toast(r.error, 'warn'); return; }
-      CB.toast(kind.toUpperCase() + ' submitted for review', 'ok');
-    });
-    dom.on(ctx.main, 'click', '[data-doc-approve]', function () {
-      act.reviewDoc(me.id, this.getAttribute('data-doc-approve'), true);
-      CB.toast('Document verified', 'ok');
-    });
-    dom.on(ctx.main, 'click', '[data-doc-reject]', function () {
-      act.reviewDoc(me.id, this.getAttribute('data-doc-reject'), false);
-      CB.toast('Document rejected', 'warn');
-    });
-
     var STATUS = {
-      idle:        { cls: 'is-idle', icon: 'ri-checkbox-circle-line', label: 'Available' },
-      'on-trip':   { cls: 'is-transit', icon: 'ri-truck-line', label: 'On a trip' },
-      maintenance: { cls: 'is-off', icon: 'ri-tools-line', label: 'Off duty' }
+      available:   { cls: 'is-idle',    icon: 'ri-checkbox-circle-line', label: 'Available' },
+      idle:        { cls: 'is-idle',    icon: 'ri-checkbox-circle-line', label: 'Available' },
+      assigned:    { cls: 'is-transit', icon: 'ri-calendar-check-line',  label: 'Assigned' },
+      'in-transit':{ cls: 'is-transit', icon: 'ri-truck-line',           label: 'In transit' },
+      'on-trip':   { cls: 'is-transit', icon: 'ri-truck-line',           label: 'In transit' },
+      maintenance: { cls: 'is-off',     icon: 'ri-tools-line',           label: 'Off duty' },
+      'off-duty':  { cls: 'is-off',     icon: 'ri-tools-line',           label: 'Off duty' }
     };
 
+    var me = null;
+
     function truckCard(tk) {
+      if (!tk) return '';
       var tt = CB.truckType(tk.type);
-      var s = STATUS[tk.status] || STATUS.idle;
-      var toggle = tk.status === 'on-trip'
-        ? '<a class="btn btn-sm btn-quiet" href="trips.html"><i class="ri-map-pin-line"></i>Track</a>'
-        : (tk.status === 'idle'
-            ? '<button class="btn btn-sm btn-outline" data-set-status="maintenance" data-truck="' + tk.id + '"><i class="ri-tools-line"></i>Off duty</button>'
-            : '<button class="btn btn-sm" data-set-status="idle" data-truck="' + tk.id + '"><i class="ri-checkbox-circle-line"></i>Available</button>');
+      var reg = tk.regNo || tk.vehicleNumber || '—';
+      var cap = tk.capacityTons != null ? tk.capacityTons : (tk.capacity != null ? tk.capacity : 9);
+      var body = tk.bodyFt ? (tk.bodyFt + ' ft body') : '—';
+      var city = tk.currentCity || tk.city || 'Location unavailable';
+      var effectiveStatus = q.truckStatus ? q.truckStatus(tk) : (tk.status || 'available');
+      var s = STATUS[effectiveStatus] || STATUS.available;
+      var activeTrip = q.activeTripForTruck ? q.activeTripForTruck(tk.id) : null;
+
+      var toggle;
+      if (effectiveStatus === 'assigned' || effectiveStatus === 'in-transit' || effectiveStatus === 'on-trip') {
+        var trackUrl = activeTrip ? ('trips.html?id=' + encodeURIComponent(activeTrip.id)) : 'trips.html';
+        toggle = '<a class="btn btn-sm btn-quiet" href="' + trackUrl + '"><i class="ri-map-pin-line"></i>Track</a>';
+      } else if (effectiveStatus === 'maintenance' || effectiveStatus === 'off-duty') {
+        toggle = '<button class="btn btn-sm" data-set-status="idle" data-truck="' + esc(tk.id) + '"><i class="ri-checkbox-circle-line"></i>Available</button>';
+      } else {
+        toggle = '<button class="btn btn-sm btn-outline" data-set-status="maintenance" data-truck="' + esc(tk.id) + '"><i class="ri-tools-line"></i>Off duty</button>';
+      }
+
+      var tripInfo = '';
+      if (activeTrip) {
+        var l = q.load(activeTrip.loadId);
+        var routeStr = l ? (l.origin.city + ' → ' + l.destination.city) : ('Trip ' + activeTrip.id);
+        var driverStr = (activeTrip.driver && activeTrip.driver.name) ? activeTrip.driver.name : 'No driver assigned';
+        tripInfo = '<div class="t-small" style="margin-top:.4rem;padding:.35rem .6rem;background:var(--surface-sunken);border-radius:var(--r-tight);display:flex;justify-content:space-between;gap:.5rem;align-items:center">' +
+          '<span><i class="ri-route-line" style="margin-right:.25rem;color:var(--accent-deep)"></i>' + esc(routeStr) + '</span>' +
+          '<span style="color:var(--ink-2)"><i class="ri-user-line" style="margin-right:.25rem"></i>' + esc(driverStr) + '</span>' +
+        '</div>';
+      }
+
       return '<div class="card"><div class="truck-card">' +
         '<div class="truck-card-top">' +
           '<div class="truck-thumb"><i class="' + tt.icon + '" style="font-size:1.6rem;color:var(--accent-deep)"></i></div>' +
           '<div style="min-width:0;flex:1">' +
-            '<div class="t-num" style="font-weight:650;font-size:1.05rem">' + esc(tk.regNo) + '</div>' +
-            '<p class="t-small">' + esc(tt.label) + ' · ' + f.tons(tk.capacityTons) + ' · ' + (tk.bodyFt || '—') + ' ft body</p>' +
+            '<div class="t-num" style="font-weight:650;font-size:1.05rem">' + esc(reg) + '</div>' +
+            '<p class="t-small">' + esc(tt.label) + ' · ' + f.tons(cap) + ' · ' + esc(body) + '</p>' +
           '</div>' +
         '</div>' +
-        '<div class="row-between">' +
+        tripInfo +
+        '<div class="row-between" style="margin-top:.4rem">' +
           '<span class="truck-status ' + s.cls + '"><i class="' + s.icon + '"></i>' + s.label + '</span>' +
-          '<span class="t-small"><i class="ri-map-pin-2-line"></i> ' + esc(tk.currentCity || '—') + '</span>' +
+          '<span class="t-small"><i class="ri-map-pin-2-line"></i> ' + esc(city) + '</span>' +
         '</div>' +
-        '<div class="row" style="gap:.5rem">' + toggle + '</div>' +
+        '<div class="row" style="gap:.5rem;margin-top:.4rem">' + toggle + '</div>' +
       '</div></div>';
     }
 
     function docRow(kind, label, icon, note) {
-      var t = q.transporter(me.id) || { docs: {} };
+      var userId = me ? me.id : (CB.session && CB.session.userId);
+      var t = q.transporter(userId) || { docs: {} };
       var state = (t.docs && t.docs[kind]) || 'none';
       var action;
       if (state === 'verified') action = '';
@@ -109,7 +114,8 @@
     }
 
     function openAddTruck() {
-      var t = q.transporter(me.id) || {};
+      var userId = me ? me.id : (CB.session && CB.session.userId);
+      var t = q.transporter(userId) || {};
       var m = ui.modal({
         eyebrow: 'Fleet', title: 'Add a truck',
         subtitle: 'List a vehicle so it can be matched to loads and committed on bids.',
@@ -141,7 +147,8 @@
         if (!d.currentCity) { ui.setError(dom.$('#tk-city', mo.el), 'Pick where the truck is'); return; }
         mo.setBusy(true);
         var r = act.addTruck({
-          ownerId: me.id, regNo: d.regNo, type: d.type,
+          ownerId: (me && me.id) || (CB.session && CB.session.userId),
+          regNo: d.regNo, type: d.type,
           capacityTons: Number(d.capacityTons) || 9, bodyFt: Number(d.bodyFt) || 20,
           currentCity: d.currentCity
         });
@@ -156,10 +163,26 @@
       var t = q.transporter(me.id) || { docs: {} };
       var card = q.transporterCard(me.id);
       var trucks = q.trucksOf(me.id);
-      var idle = trucks.filter(function (x) { return x.status === 'idle'; });
-      var onTrip = trucks.filter(function (x) { return x.status === 'on-trip'; });
+      var idle = trucks.filter(q.isTruckIdle);
+      var assigned = trucks.filter(function (x) { return q.truckStatus(x) === 'assigned'; });
+      var inTransit = trucks.filter(function (x) { return q.truckStatus(x) === 'in-transit'; });
+      var onTrip = trucks.filter(function (x) {
+        var st = q.truckStatus(x);
+        return st === 'assigned' || st === 'in-transit';
+      });
       var docs = t.docs || {};
       var cleared = ['gst', 'pan', 'rc'].filter(function (k) { return docs[k] === 'verified'; }).length;
+
+      var tripFoot = 'currently moving freight';
+      if (assigned.length && inTransit.length) {
+        tripFoot = assigned.length + ' assigned · ' + inTransit.length + ' in transit';
+      } else if (assigned.length) {
+        tripFoot = assigned.length + ' assigned to load';
+      } else if (inTransit.length) {
+        tripFoot = inTransit.length + ' on corridor';
+      } else {
+        tripFoot = 'none currently moving';
+      }
 
       ctx.main.innerHTML =
         '<div class="page-head"><div class="page-head-text">' +
@@ -171,7 +194,7 @@
         '<div class="stat-grid">' +
           ui.statTile({ icon: 'ri-caravan-line', value: trucks.length, label: 'Trucks in fleet', foot: (t.truckTypes || []).length + ' body type' + ((t.truckTypes || []).length === 1 ? '' : 's') }) +
           ui.statTile({ icon: 'ri-checkbox-circle-line', value: idle.length, label: 'Available now', foot: idle.length ? 'ready to load' : 'all deployed' }) +
-          ui.statTile({ icon: 'ri-truck-line', value: onTrip.length, label: 'On trips', foot: 'currently moving freight' }) +
+          ui.statTile({ icon: 'ri-truck-line', value: onTrip.length, label: 'On trips', foot: tripFoot }) +
           ui.statTile({ icon: 'ri-verified-badge-line', value: t.verified ? 'Verified' : cleared + '/3', label: 'Compliance', foot: t.verified ? 'badge active on your bids' : 'documents cleared' }) +
         '</div>' +
 
@@ -211,6 +234,36 @@
             '</div></div>' +
         '</div></div>';
     }
+
+    var ctx = CB.shell.mount({ role: 'transporter', nav: 'fleet', title: 'Fleet', live: true, render: render });
+    if (!ctx) return;
+    me = ctx.user;
+
+    /* ---- delegated actions ---- */
+    dom.on(ctx.main, 'click', '#add-truck', function () { openAddTruck(); });
+    dom.on(ctx.main, 'click', '[data-set-status]', function () {
+      var id = this.getAttribute('data-truck'), s = this.getAttribute('data-set-status');
+      var r = act.setTruckStatus(id, s);
+      if (r && r.error) { CB.toast(r.error, 'warn'); return; }
+      CB.toast(s === 'idle' ? 'Marked available' : 'Taken off duty', s === 'idle' ? 'ok' : 'info');
+    });
+    dom.on(ctx.main, 'click', '[data-upload]', function () {
+      var kind = this.getAttribute('data-upload');
+      var uid = (me && me.id) || (CB.session && CB.session.userId);
+      var r = act.uploadDoc(uid, kind, kind + '-scan.pdf');
+      if (r && r.error) { CB.toast(r.error, 'warn'); return; }
+      CB.toast(kind.toUpperCase() + ' submitted for review', 'ok');
+    });
+    dom.on(ctx.main, 'click', '[data-doc-approve]', function () {
+      var uid = (me && me.id) || (CB.session && CB.session.userId);
+      act.reviewDoc(uid, this.getAttribute('data-doc-approve'), true);
+      CB.toast('Document verified', 'ok');
+    });
+    dom.on(ctx.main, 'click', '[data-doc-reject]', function () {
+      var uid = (me && me.id) || (CB.session && CB.session.userId);
+      act.reviewDoc(uid, this.getAttribute('data-doc-reject'), false);
+      CB.toast('Document rejected', 'warn');
+    });
   }());
   </script>
 </body>

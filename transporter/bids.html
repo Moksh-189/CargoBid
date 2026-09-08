@@ -33,37 +33,13 @@
     var dom = CB.dom, esc = CB.util.esc, f = CB.fmt, q = CB.q, ui = CB.ui, act = CB.act;
     var filter = 'all';
 
-    var ctx = CB.shell.mount({ role: 'transporter', nav: 'bids', title: 'My bids', live: true, render: render });
-    if (!ctx) return;
-    var me = ctx.user;
-
-    dom.on(ctx.main, 'click', '[data-filter]', function () { filter = this.getAttribute('data-filter'); ctx.refresh(); });
-    dom.on(ctx.main, 'click', '[data-withdraw]', function () {
-      var id = this.getAttribute('data-withdraw');
-      var b = q.bid(id); if (!b) return;
-      var l = q.load(b.loadId);
-      ui.confirm({
-        title: 'Withdraw this bid?', tone: 'danger', icon: 'ri-close-line', confirmLabel: 'Withdraw bid',
-        subtitle: l ? (l.origin.city + ' → ' + l.destination.city + ' · you can re-bid while it stays open.') : ''
-      }).then(function (ok) {
-        if (!ok) return;
-        var r = act.withdrawBid(id);
-        if (r && r.error) { CB.toast(r.error, 'warn'); return; }
-        CB.toast('Bid withdrawn', 'warn');
-      });
-    });
-
-    function pendingCounter(b) {
-      var c = b.counters && b.counters[b.counters.length - 1];
-      return (c && c.by === 'shipper' && c.state === 'pending') ? c : null;
-    }
-
     var TABS = [
       { key: 'all', label: 'All' },
       { key: 'live', label: 'Live' },
       { key: 'won', label: 'Won' },
       { key: 'ended', label: 'Ended' }
     ];
+
     function bucket(b) {
       var l = q.load(b.loadId);
       if (b.status === 'won') return 'won';
@@ -72,6 +48,11 @@
       return 'ended';
     }
     function inTab(b, key) { return key === 'all' ? true : bucket(b) === key; }
+
+    function pendingCounter(b) {
+      var c = b.counters && b.counters[b.counters.length - 1];
+      return (c && c.by === 'shipper' && c.state === 'pending') ? c : null;
+    }
 
     function bidCard(b) {
       var l = q.load(b.loadId);
@@ -161,6 +142,27 @@
 
       ui.startCountdowns();
     }
+
+    var me = null;
+    var ctx = CB.shell.mount({ role: 'transporter', nav: 'bids', title: 'My bids', live: true, render: render });
+    if (!ctx) return;
+    me = ctx.user;
+
+    dom.on(ctx.main, 'click', '[data-filter]', function () { filter = this.getAttribute('data-filter'); ctx.refresh(); });
+    dom.on(ctx.main, 'click', '[data-withdraw]', function () {
+      var id = this.getAttribute('data-withdraw');
+      var b = q.bid(id); if (!b) return;
+      var l = q.load(b.loadId);
+      ui.confirm({
+        title: 'Withdraw this bid?', tone: 'danger', icon: 'ri-close-line', confirmLabel: 'Withdraw bid',
+        subtitle: l ? (l.origin.city + ' → ' + l.destination.city + ' · you can re-bid while it stays open.') : ''
+      }).then(function (ok) {
+        if (!ok) return;
+        var r = act.withdrawBid(id);
+        if (r && r.error) { CB.toast(r.error, 'warn'); return; }
+        CB.toast('Bid withdrawn', 'warn');
+      });
+    });
   }());
   </script>
 </body>

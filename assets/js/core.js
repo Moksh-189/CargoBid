@@ -490,6 +490,21 @@
           }
         });
       }
+      /* Schema migration: normalize truck records */
+      if (parsed.trucks) {
+        parsed.trucks.forEach(function (tk) {
+          if (!tk) return;
+          if (!tk.ownerId && tk.transporterId) tk.ownerId = tk.transporterId;
+          if (!tk.transporterId && tk.ownerId) tk.transporterId = tk.ownerId;
+          if (!tk.regNo && tk.vehicleNumber) tk.regNo = tk.vehicleNumber;
+          if (!tk.vehicleNumber && tk.regNo) tk.vehicleNumber = tk.regNo;
+          if (tk.capacityTons == null && tk.capacity != null) tk.capacityTons = Number(tk.capacity) || 9;
+          if (tk.capacity == null && tk.capacityTons != null) tk.capacity = tk.capacityTons;
+          if (!tk.type) tk.type = 'open';
+          if (!tk.status) tk.status = 'idle';
+          if (!tk.currentCity && tk.city) tk.currentCity = tk.city;
+        });
+      }
       CB.db = parsed;
       anchorReal = realNow();
       return true;
@@ -666,22 +681,55 @@
   /* Everything a bid row needs to render, in one object. */
   q.transporterCard = function (userId) {
     var u = q.user(userId), t = q.transporter(userId);
-    if (!u || !t) return null;
+    var trucks = q.trucksOf(userId);
     return {
       id: userId, name: u.name, company: u.company, phone: u.phone, city: u.city,
-      t: t, verified: t.verified, fleetSize: t.fleetSize,
+      t: t, verified: t.verified, fleetSize: trucks.length || t.fleetSize || 0,
       rating: CB.score.avgRating(t), reliability: t.reliability,
       band: CB.score.band(t.reliability),
-      trucks: q.trucksOf(userId)
+      trucks: trucks
     };
   };
 
   q.trucksOf = function (userId) {
-    return CB.db.trucks.filter(function (x) { return x.ownerId === userId; });
+    return (CB.db.trucks || []).filter(function (x) {
+      return x && (x.ownerId === userId || x.transporterId === userId);
+    });
+  };
+
+  q.activeTripForTruck = function (truckId) {
+    if (!truckId) return null;
+    var trips = CB.db.trips || [];
+    for (var i = 0; i < trips.length; i++) {
+      var tr = trips[i];
+      if (tr.truckId === truckId && tr.status !== 'delivered') return tr;
+    }
+    return null;
+  };
+
+  q.truckStatus = function (tk) {
+    if (!tk) return 'available';
+    if (tk.status === 'maintenance' || tk.status === 'off-duty') return 'maintenance';
+    var activeTrip = q.activeTripForTruck(tk.id);
+    if (activeTrip) {
+      if (activeTrip.status === 'assigned' || activeTrip.status === 'at-pickup' || activeTrip.status === 'loaded') {
+        return 'assigned';
+      }
+      return 'in-transit';
+    }
+    if (tk.status === 'assigned') return 'assigned';
+    if (tk.status === 'on-trip' || tk.status === 'in-transit') return 'in-transit';
+    if (tk.status === 'available' || tk.status === 'idle') return 'available';
+    return tk.status || 'available';
+  };
+
+  q.isTruckIdle = function (tk) {
+    var s = q.truckStatus(tk);
+    return s === 'available' || s === 'idle';
   };
 
   q.idleTrucksOf = function (userId) {
-    return q.trucksOf(userId).filter(function (x) { return x.status === 'idle'; });
+    return q.trucksOf(userId).filter(q.isTruckIdle);
   };
 
   q.loadsOf = function (shipperId) {
@@ -1663,6 +1711,10 @@
   act.setTruckStatus = function (truckId, status) {
     var t = q.truck(truckId);
     if (!t) return { error: 'Not found.' };
+    var activeTrip = q.activeTripForTruck(truckId);
+    if (activeTrip && (status === 'idle' || status === 'available' || status === 'maintenance' || status === 'off-duty')) {
+      return { error: 'Truck is currently assigned to trip ' + activeTrip.id + ' (' + activeTrip.status + '). Cannot change status while trip is active.' };
+    }
     t.status = status;
     CB.save();
     CB.emit('change');
