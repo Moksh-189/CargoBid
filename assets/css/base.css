@@ -130,6 +130,7 @@ body {
 
 h1, h2, h3, h4, h5, p, figure, blockquote, dl, dd { margin: 0; }
 ul[class], ol[class] { list-style: none; margin: 0; padding: 0; }
+[hidden] { display: none !important; }
 
 img, svg, video, canvas {
   display: block;
