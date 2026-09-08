@@ -123,15 +123,15 @@
      ------------------------------------------------------------------------ */
 
   /* When bidder #rank on this load intends to make its first move. Front
-     loaded so the first bids land within a minute of virtual time and the
+     loaded so the first bids land within 10-15 seconds of virtual time and the
      demo reads well even at 1x. */
   function firstBidAt(load, rank, tid) {
-    return load.createdAt + m(0.5 + rank * 1.6 + jit(load.id, tid) * 2.5);
+    return load.createdAt + m(0.15 + rank * 0.2 + jit(load.id, tid) * 0.1);
   }
 
   /* How long a bot sits still after being outbid before it responds. */
   function undercutCooldown(load, tid) {
-    return m(4 + jit(tid, load.id) * 20);
+    return m(0.2 + jit(tid, load.id) * 0.3);
   }
 
   sim.stepBots = function (now) {
