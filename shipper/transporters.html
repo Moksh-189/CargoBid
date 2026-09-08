@@ -47,7 +47,8 @@
     dom.on(ctx.main, 'change', '#dir-verified,#dir-city,#dir-truck,#dir-sort', paint);
 
     /* ==================================================================== */
-    function renderShell(ctx) {
+    function renderShell(c) {
+      ctx = c;
       if (profileId) { renderProfile(); return; }
 
       var truckOpts = '<option value="">Any truck type</option>' +

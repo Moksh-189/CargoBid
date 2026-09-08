@@ -132,7 +132,8 @@
       ui.startCountdowns();
     }
 
-    function renderShell(ctx) {
+    function renderShell(c) {
+      ctx = c;
       ctx.main.innerHTML =
         '<div class="page-head"><div class="page-head-text">' +
           '<h2>My loads</h2><p class="t-lead">Every load you have posted, from live auction to delivered.</p>' +

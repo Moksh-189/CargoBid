@@ -47,7 +47,8 @@
     dom.on(ctx.main, 'change', '#mkt-truck,#mkt-origin,#mkt-dest,#mkt-sort,#mkt-showall,#mkt-backhaul,#mkt-notbid', paint);
 
     /* ==================================================================== */
-    function renderShell(ctx) {
+    function renderShell(c) {
+      ctx = c;
       var truckOpts = '<option value="">Any truck type</option>' +
         CB.TRUCK_TYPES.map(function (t) { return '<option value="' + t.key + '">' + esc(t.label) + '</option>'; }).join('');
 

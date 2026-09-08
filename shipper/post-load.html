@@ -150,7 +150,8 @@
     }
 
     /* ---- shell ---------------------------------------------------------- */
-    function renderShell(ctx) {
+    function renderShell(c) {
+      ctx = c; // assign to outer scope so helpers like updateRouteNote can use ctx.main
       ctx.main.innerHTML =
         '<nav class="breadcrumb"><a href="loads.html">My loads</a><i class="ri-arrow-right-s-line"></i><span>Post a load</span></nav>' +
         '<div class="page-head"><div class="page-head-text"><h2>Post a load</h2>' +
