@@ -672,19 +672,15 @@
   font-weight: 620;
   letter-spacing: -0.03em;
   line-height: 1;
-  margin-top: -0.4rem;
+  transform: translateY(-0.35rem);
 }
 .dial-cap {
-  font-size: 0.45rem;
+  font-size: 0.5rem;
   color: var(--ink-3);
   text-transform: uppercase;
   letter-spacing: 0.02em;
   font-family: var(--font-mono);
-  margin-top: 1.6rem;
-  max-width: 85%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  transform: translateY(1.1rem);
 }
 
 /* Sparkline (CB.ui.sparkline) */
