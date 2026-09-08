@@ -772,15 +772,35 @@
       }
 
       if (CB.escrow) {
+        var fee = util.quote(trip.amount * 0.015);
+        var total = trip.amount + fee;
+        var advance = util.quote(trip.amount * 0.7);
+        var balance = trip.amount - advance;
+        var advRelease = upto >= 2;
+        var settled = spec.tripAt === 'delivered';
+        
         trip.escrow = {
-          status: spec.tripAt === 'delivered' ? 'settled' : (upto >= 2 ? 'advance_released' : 'locked'),
-          amountLocked: trip.amount,
-          amountReleased: spec.tripAt === 'delivered' ? trip.amount : (upto >= 2 ? trip.amount * 0.8 : 0),
+          status: settled ? 'fully_released' : (advRelease ? 'advance_released' : 'locked'),
+          freightAmount: trip.amount,
+          platformFee: fee,
+          totalLocked: total,
+          advanceAmount: advance,
+          balanceAmount: balance,
+          advancePaid: advRelease || settled,
+          balancePaid: settled,
           gateInOtp: util.int(rand, 1000, 9999).toString(),
           gateOutOtp: util.int(rand, 1000, 9999).toString(),
-          penalties: [],
-          updatedAt: trip.createdAt
+          gateInVerified: advRelease || settled,
+          gateOutVerified: settled,
+          demurrageStartAt: null,
+          demurragePenalty: 0,
+          latePenalty: 0,
+          disputeId: null,
+          lockedAt: trip.createdAt,
+          ledger: [ { event: 'locked', amount: total, at: trip.createdAt, note: 'Freight locked' } ]
         };
+        if (advRelease || settled) trip.escrow.ledger.push({ event: 'advance_released', amount: advance, at: trip.createdAt + h(2), note: '70% advance' });
+        if (settled) trip.escrow.ledger.push({ event: 'balance_released', amount: balance, at: trip.deliveredAt, note: 'Balance released' });
       }
 
       CB.db.trips.push(trip);
